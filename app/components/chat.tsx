@@ -570,13 +570,13 @@ export function ChatActions(props: {
   const isMobileScreen = useMobileScreen();
 
   useEffect(() => {
-    const show = isVisionModel(currentModel);
-    setShowUploadImage(show);
-    if (!show) {
-      props.setAttachImages([]);
-      props.setUploading(false);
-    }
-
+    // const show = isVisionModel(currentModel);
+    // setShowUploadImage(show);
+    // if (!show) {
+    //   props.setAttachImages([]);
+    //   props.setUploading(false);
+    // }
+    setShowUploadImage(true);
     // if current model is not available
     // switch to first available model
     const isUnavailableModel = !models.some((m) => m.name === currentModel);
@@ -621,7 +621,7 @@ export function ChatActions(props: {
           />
         )}
 
-        {showUploadImage && (
+        {(
           <ChatAction
             onClick={props.uploadImage}
             text={Locale.Chat.InputActions.UploadImage}
