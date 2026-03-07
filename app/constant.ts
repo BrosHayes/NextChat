@@ -473,6 +473,15 @@ export const DEFAULT_TTS_VOICES = [
   "onyx",
   "nova",
   "shimmer",
+  "zh-CN-XiaoyiNeural",
+  "zh-CN-YunxiNeural",
+  "zh-CN-XiaochenNeural",
+  "zh-CN-YunjianNeural",
+  "zh-CN-XiaohanNeural",
+  "zh-CN-XiaomoNeural",
+  "zh-CN-XiaoxiaoNeural",
+  "zh-CN-Xiaoxiao:DragonHDFlashLatestNeural",
+  "zh-CN-Xiaoxiao2:DragonHDFlashLatestNeural",
 ];
 
 export const VISION_MODEL_REGEXES = [
