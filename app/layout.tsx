@@ -10,10 +10,30 @@ import { getServerSideConfig } from "./config/server";
 
 export const metadata: Metadata = {
   title: "NextChat",
-  description: "Your personal ChatGPT Chat Bot.",
+  applicationName: "NextChat",
+  description: "Your personal AI workspace.",
   appleWebApp: {
     title: "NextChat",
     statusBarStyle: "default",
+  },
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png" }],
+    shortcut: ["/favicon.ico"],
+  },
+  openGraph: {
+    title: "NextChat",
+    description: "Your personal AI workspace.",
+    siteName: "NextChat",
+  },
+  twitter: {
+    card: "summary",
+    title: "NextChat",
+    description: "Your personal AI workspace.",
   },
 };
 

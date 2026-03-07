@@ -21,7 +21,7 @@ import {
 
 import CopyIcon from "../icons/copy.svg";
 import LoadingIcon from "../icons/three-dots.svg";
-import ChatGptIcon from "../icons/chatgpt.png";
+
 import ShareIcon from "../icons/share.svg";
 
 import DownloadIcon from "../icons/download.svg";
@@ -34,7 +34,7 @@ import NextImage from "next/image";
 import { toBlob, toPng } from "html-to-image";
 
 import { prettyObject } from "../utils/format";
-import { EXPORT_MESSAGE_CLASS_NAME } from "../constant";
+import { EXPORT_MESSAGE_CLASS_NAME, REPO_URL } from "../constant";
 import { getClientConfig } from "../config/client";
 import { type ClientApi, getClientApi } from "../client/api";
 import { getMessageTextContent } from "../utils";
@@ -45,6 +45,8 @@ const Markdown = dynamic(async () => (await import("./markdown")).Markdown, {
   loading: () => <LoadingIcon />,
 });
 
+const APP_ICON = "/apple-touch-icon.png";
+const ASSISTANT_EXPORT_LABEL = "Assistant";
 export function ExportMessageModal(props: { onClose: () => void }) {
   return (
     <div className="modal-mask">
@@ -414,6 +416,7 @@ export function ImagePreviewer(props: {
   const session = chatStore.currentSession();
   const mask = session.mask;
   const config = useAppConfig();
+  const repoLabel = REPO_URL.replace(/^https?:\/\//, "");
 
   const previewRef = useRef<HTMLDivElement>(null);
 
@@ -516,8 +519,8 @@ export function ImagePreviewer(props: {
         <div className={styles["chat-info"]}>
           <div className={clsx(styles["logo"], "no-dark")}>
             <NextImage
-              src={ChatGptIcon.src}
-              alt="logo"
+              src={APP_ICON}
+              alt="NextChat logo"
               width={50}
               height={50}
             />
@@ -526,7 +529,7 @@ export function ImagePreviewer(props: {
           <div>
             <div className={styles["main-title"]}>NextChat</div>
             <div className={styles["sub-title"]}>
-              github.com/ChatGPTNextWeb/ChatGPT-Next-Web
+              {repoLabel}
             </div>
             <div className={styles["icons"]}>
               <MaskAvatar avatar={config.avatar} />
@@ -625,7 +628,7 @@ export function MarkdownPreviewer(props: {
       .map((m) => {
         return m.role === "user"
           ? `## ${Locale.Export.MessageFromYou}:\n${getMessageTextContent(m)}`
-          : `## ${Locale.Export.MessageFromChatGPT}:\n${getMessageTextContent(
+          : `## ${ASSISTANT_EXPORT_LABEL}:\n${getMessageTextContent(
               m,
             ).trim()}`;
       })

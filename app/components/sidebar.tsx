@@ -5,7 +5,7 @@ import styles from "./home.module.scss";
 import { IconButton } from "./button";
 import SettingsIcon from "../icons/settings.svg";
 import GithubIcon from "../icons/github.svg";
-import ChatGptIcon from "../icons/chatgpt.svg";
+import LogoIcon from "../icons/logo.svg";
 import AddIcon from "../icons/add.svg";
 import DeleteIcon from "../icons/delete.svg";
 import MaskIcon from "../icons/mask.svg";
@@ -252,7 +252,7 @@ export function SideBar(props: { className?: string }) {
       <SideBarHeader
         title="NextChat"
         subTitle="Build your own AI assistant."
-        logo={<ChatGptIcon />}
+        logo={<LogoIcon />}
         shouldNarrow={shouldNarrow}
       >
         <div className={styles["sidebar-header-bar"]}>
@@ -339,7 +339,7 @@ export function SideBar(props: { className?: string }) {
             <div className={styles["sidebar-action"]}>
               <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
                 <IconButton
-                  aria={Locale.Export.MessageFromChatGPT}
+                  aria="Repository"
                   icon={<GithubIcon />}
                   shadow
                 />
