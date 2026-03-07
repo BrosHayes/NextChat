@@ -743,7 +743,7 @@ const ai302Models = [
 ];
 
 let seq = 1000; // 内置的模型序号生成器从1000开始
-export const DEFAULT_MODELS = [
+export const BUILTIN_MODEL_CATALOG = [
   ...openaiModels.map((name) => ({
     name,
     available: true,
@@ -910,6 +910,8 @@ export const DEFAULT_MODELS = [
     },
   })),
 ] as const;
+
+export const DEFAULT_MODELS = [] as const;
 
 export const CHAT_PAGE_SIZE = 15;
 export const MAX_RENDER_MSG_COUNT = 45;
