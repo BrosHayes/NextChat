@@ -218,6 +218,36 @@ export function isGPT4Model(modelName: string): boolean {
   );
 }
 
+function isProviderUnspecifiedCustomModelEnabled(
+  customModels: string,
+  modelName: string,
+) {
+  let enabled: boolean | undefined;
+
+  customModels
+    .split(",")
+    .map((model) => model.trim())
+    .filter(Boolean)
+    .forEach((model) => {
+      const available = !model.startsWith("-");
+      const nameConfig =
+        model.startsWith("+") || model.startsWith("-") ? model.slice(1) : model;
+      const [fullName] = nameConfig.split("=");
+
+      if (fullName === "all") {
+        return;
+      }
+
+      const [customModelName, customProviderName] = getModelProvider(fullName);
+
+      if (customModelName === modelName && customProviderName === undefined) {
+        enabled = available;
+      }
+    });
+
+  return enabled === true;
+}
+
 /**
  * Checks if a model is not available on any of the specified providers in the server.
  *
@@ -250,6 +280,12 @@ export function isModelNotavailableInServer(
     if (providerName === ServiceProvider.ByteDance) {
       return !Object.values(modelTable).filter((v) => v.name === modelName)?.[0]
         ?.available;
+    }
+    if (
+      providerName === modelName &&
+      isProviderUnspecifiedCustomModelEnabled(customModels, modelName)
+    ) {
+      return false;
     }
     const fullName = `${modelName}@${providerName.toLowerCase()}`;
     if (modelTable?.[fullName]?.available === true) return false;
