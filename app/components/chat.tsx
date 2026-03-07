@@ -405,6 +405,7 @@ export function ChatAction(props: {
   text: string;
   icon: JSX.Element;
   onClick: () => void;
+  disabled?: boolean;
 }) {
   const iconRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
@@ -426,11 +427,16 @@ export function ChatAction(props: {
 
   return (
     <div
-      className={clsx(styles["chat-input-action"], "clickable")}
+      className={clsx(styles["chat-input-action"], {
+        clickable: !props.disabled,
+        [styles["chat-input-action-disabled"]]: props.disabled,
+      })}
       onClick={() => {
+        if (props.disabled) return;
         props.onClick();
         setTimeout(updateWidth, 1);
       }}
+      aria-disabled={props.disabled}
       onMouseEnter={updateWidth}
       onTouchStart={updateWidth}
       style={
@@ -1288,6 +1294,10 @@ function _Chat() {
   const [speechLoading, setSpeechLoading] = useState(false);
 
   async function openaiSpeech(text: string) {
+    if (speechLoading) {
+      return;
+    }
+
     if (speechStatus) {
       ttsPlayer.stop();
       setSpeechStatus(false);
@@ -1923,17 +1933,22 @@ function _Chat() {
                                       {config.ttsConfig.enable && (
                                         <ChatAction
                                           text={
-                                            speechStatus
+                                            speechLoading
+                                              ? `${Locale.Chat.Actions.Speech}...`
+                                              : speechStatus
                                               ? Locale.Chat.Actions.StopSpeech
                                               : Locale.Chat.Actions.Speech
                                           }
                                           icon={
-                                            speechStatus ? (
+                                            speechLoading ? (
+                                              <LoadingButtonIcon />
+                                            ) : speechStatus ? (
                                               <SpeakStopIcon />
                                             ) : (
                                               <SpeakIcon />
                                             )
                                           }
+                                          disabled={speechLoading}
                                           onClick={() =>
                                             openaiSpeech(
                                               getMessageTextContent(message),
