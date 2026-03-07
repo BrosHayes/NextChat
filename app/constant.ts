@@ -1,3 +1,4 @@
+/* eslint-disable unused-imports/no-unused-imports */
 export const OWNER = "haso2007";
 export const REPO = "nextchat";
 export const REPO_URL = `https://github.com/${OWNER}/${REPO}`;

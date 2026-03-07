@@ -15,6 +15,8 @@ const CustomSeq = {
   },
 };
 
+function normalizeProviderId(providerName: string): string;
+function normalizeProviderId(providerName?: string): string | undefined;
 function normalizeProviderId(providerName?: string) {
   if (!providerName) {
     return providerName;
@@ -125,7 +127,8 @@ export function collectModelTable(
   // server custom models
   customModels
     .split(",")
-    .filter((v) => !!v && v.length > 0)
+    .map((v) => v.trim())
+    .filter(Boolean)
     .forEach((m) => {
       const available = !m.startsWith("-");
       const nameConfig =
