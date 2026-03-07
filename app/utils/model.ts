@@ -15,12 +15,55 @@ const CustomSeq = {
   },
 };
 
+function normalizeProviderId(providerName?: string) {
+  if (!providerName) {
+    return providerName;
+  }
+
+  const normalizedProviderName = providerName.toLowerCase();
+
+  return normalizedProviderName === "ai302"
+    ? ServiceProvider["302.AI"].toLowerCase()
+    : normalizedProviderName;
+}
+
 const customProvider = (providerName: string) => ({
-  id: providerName.toLowerCase(),
+  id: normalizeProviderId(providerName),
   providerName: providerName,
   providerType: "custom",
   sorted: CustomSeq.next(providerName),
 });
+
+function upsertCustomModel(
+  modelTable: Record<
+    string,
+    {
+      available: boolean;
+      name: string;
+      displayName: string;
+      sorted: number;
+      provider?: LLMModel["provider"];
+      isDefault?: boolean;
+    }
+  >,
+  modelName: string,
+  providerName: string,
+  available: boolean,
+  displayName?: string,
+) {
+  const provider = customProvider(providerName);
+  const fullName = `${modelName}@${normalizeProviderId(provider.id)}`;
+  const existingModel = modelTable[fullName];
+
+  modelTable[fullName] = {
+    name: modelName,
+    displayName: displayName || existingModel?.displayName || modelName,
+    available,
+    provider,
+    sorted: existingModel?.sorted ?? CustomSeq.next(fullName),
+    isDefault: existingModel?.isDefault,
+  };
+}
 
 /**
  * Sorts an array of models based on specified rules.
@@ -67,8 +110,14 @@ export function collectModelTable(
   // default models
   models.forEach((m) => {
     // using <modelName>@<providerId> as fullName
-    modelTable[`${m.name}@${m?.provider?.id}`] = {
+    modelTable[`${m.name}@${normalizeProviderId(m?.provider?.id)}`] = {
       ...m,
+      provider: m.provider
+        ? {
+            ...m.provider,
+            id: normalizeProviderId(m.provider.id) as string,
+          }
+        : undefined,
       displayName: m.name, // 'provider' is copied over if it exists
     };
   });
@@ -91,13 +140,33 @@ export function collectModelTable(
       } else {
         // 1. find model by name, and set available value
         const [customModelName, customProviderName] = getModelProvider(name);
+
+        if (customProviderName === undefined && available) {
+          for (const fullName in modelTable) {
+            const [modelName] = getModelProvider(fullName);
+            if (modelName === customModelName) {
+              modelTable[fullName]["available"] = false;
+            }
+          }
+
+          upsertCustomModel(
+            modelTable,
+            customModelName,
+            customModelName,
+            true,
+            displayName,
+          );
+          return;
+        }
+
         let count = 0;
         for (const fullName in modelTable) {
           const [modelName, providerName] = getModelProvider(fullName);
           if (
             customModelName == modelName &&
             (customProviderName === undefined ||
-              customProviderName === providerName)
+              normalizeProviderId(customProviderName) ===
+                normalizeProviderId(providerName))
           ) {
             count += 1;
             modelTable[fullName]["available"] = available;
@@ -114,20 +183,17 @@ export function collectModelTable(
         // 2. if model not exists, create new model with available value
         if (count === 0) {
           let [customModelName, customProviderName] = getModelProvider(name);
-          const provider = customProvider(
-            customProviderName || customModelName,
-          );
           // swap name and displayName for bytedance
-          if (displayName && provider.providerName == "ByteDance") {
+          if (displayName && customProviderName == "ByteDance") {
             [customModelName, displayName] = [displayName, customModelName];
           }
-          modelTable[`${customModelName}@${provider?.id}`] = {
-            name: customModelName,
-            displayName: displayName || customModelName,
+          upsertCustomModel(
+            modelTable,
+            customModelName,
+            customProviderName || customModelName,
             available,
-            provider, // Use optional chaining
-            sorted: CustomSeq.next(`${customModelName}@${provider?.id}`),
-          };
+            displayName,
+          );
         }
       }
     });
@@ -143,8 +209,11 @@ export function collectModelTableWithDefaultModel(
   let modelTable = collectModelTable(models, customModels);
   if (defaultModel && defaultModel !== "") {
     if (defaultModel.includes("@")) {
-      if (defaultModel in modelTable) {
-        modelTable[defaultModel].isDefault = true;
+      const [modelName, providerName] = getModelProvider(defaultModel);
+      const normalizedDefaultModel =
+        `${modelName}@${normalizeProviderId(providerName)}`;
+      if (normalizedDefaultModel in modelTable) {
+        modelTable[normalizedDefaultModel].isDefault = true;
       }
     } else {
       for (const key of Object.keys(modelTable)) {
@@ -198,7 +267,7 @@ export function isModelAvailableInServer(
   modelName: string,
   providerName: string,
 ) {
-  const fullName = `${modelName}@${providerName}`;
+  const fullName = `${modelName}@${normalizeProviderId(providerName)}`;
   const modelTable = collectModelTable(DEFAULT_MODELS, customModels);
   return modelTable[fullName]?.available === false;
 }
@@ -287,7 +356,7 @@ export function isModelNotavailableInServer(
     ) {
       return false;
     }
-    const fullName = `${modelName}@${providerName.toLowerCase()}`;
+    const fullName = `${modelName}@${normalizeProviderId(providerName)}`;
     if (modelTable?.[fullName]?.available === true) return false;
   }
   return true;

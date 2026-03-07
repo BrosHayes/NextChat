@@ -277,7 +277,7 @@ export class Ai302Api implements LLMApi {
       available: true,
       sorted: seq++,
       provider: {
-        id: "ai302",
+        id: "302.ai",
         providerName: "302.AI",
         providerType: "ai302",
         sorted: 15,

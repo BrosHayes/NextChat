@@ -912,7 +912,7 @@ export const DEFAULT_MODELS = [
     available: true,
     sorted: seq++,
     provider: {
-      id: "ai302",
+      id: "302.ai",
       providerName: "302.AI",
       providerType: "ai302",
       sorted: 15,

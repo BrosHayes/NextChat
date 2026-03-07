@@ -1,4 +1,7 @@
-import { isModelNotavailableInServer } from "../app/utils/model";
+import {
+  collectModelTable,
+  isModelNotavailableInServer,
+} from "../app/utils/model";
 
 describe("isModelNotavailableInServer", () => {
   test("test model will return false, which means the model is available", () => {
@@ -76,5 +79,29 @@ describe("isModelNotavailableInServer", () => {
       providerNames,
     );
     expect(result).toBe(false);
+  });
+
+  test("prefers provider-unspecified custom models over built-in 302.AI entries", () => {
+    const modelTable = collectModelTable(
+      [
+        {
+          name: "gemini-2.5-flash",
+          available: true,
+          sorted: 1,
+          provider: {
+            id: "ai302",
+            providerName: "302.AI",
+            providerType: "ai302",
+            sorted: 1,
+          },
+        },
+      ],
+      "gemini-2.5-flash",
+    );
+
+    expect(modelTable["gemini-2.5-flash@302.ai"]?.available).toBe(false);
+    expect(
+      modelTable["gemini-2.5-flash@gemini-2.5-flash"]?.available,
+    ).toBe(true);
   });
 });
