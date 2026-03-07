@@ -265,9 +265,7 @@ export const useAccessStore = createPersistStore(
           if (defaultModel !== "") {
             const [model, providerName] = getModelProvider(defaultModel);
             DEFAULT_CONFIG.modelConfig.model = model;
-            if (providerName) {
-              DEFAULT_CONFIG.modelConfig.providerName = providerName as any;
-            }
+            DEFAULT_CONFIG.modelConfig.providerName = providerName as any;
           }
 
           return res;

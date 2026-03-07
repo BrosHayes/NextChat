@@ -550,7 +550,7 @@ export function ChatActions(props: {
         m.name == currentModel &&
         m?.provider?.providerName == currentProviderName,
     );
-    return model?.displayName ?? currentModel;
+    return model?.displayName ?? "";
   }, [models, currentModel, currentProviderName]);
   const [showModelSelector, setShowModelSelector] = useState(false);
   const [showPluginSelector, setShowPluginSelector] = useState(false);
