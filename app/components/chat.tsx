@@ -587,19 +587,25 @@ export function ChatActions(props: {
     setShowUploadImage(true);
     // if current model is not available
     // switch to first available model
-    const isUnavailableModel = !models.some((m) => m.name === currentModel);
+    const isUnavailableModel = !models.some(
+      (m) =>
+        m.name === currentModel &&
+        m?.provider?.providerName === currentProviderName,
+    );
     if (isUnavailableModel && models.length > 0) {
-      // show next model to default model if exist
-      let nextModel = models.find((model) => model.isDefault) || models[0];
+      const nextModel =
+        models.find((model) => model.name === currentModel) ||
+        models.find((model) => model.isDefault) ||
+        models[0];
       chatStore.updateTargetSession(session, (session) => {
         session.mask.modelConfig.model = nextModel.name;
         session.mask.modelConfig.providerName = nextModel?.provider
           ?.providerName as ServiceProvider;
       });
       showToast(
-        nextModel?.provider?.providerName == "ByteDance"
-          ? nextModel.displayName
-          : nextModel.name,
+        nextModel?.provider?.providerName
+          ? `${nextModel.displayName} (${nextModel.provider.providerName})`
+          : nextModel.displayName,
       );
     }
   }, [chatStore, currentModel, models, session]);

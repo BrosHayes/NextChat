@@ -12,6 +12,27 @@ import {
 import { prettyObject } from "./format";
 import { fetch as tauriFetch } from "./stream";
 
+function formatStreamErrorMessage(error: unknown) {
+  const message =
+    typeof error === "object" && error !== null
+      ? "message" in error && typeof error.message === "string"
+        ? error.message
+        : "error" in error &&
+            typeof error.error === "object" &&
+            error.error !== null &&
+            "message" in error.error &&
+            typeof error.error.message === "string"
+          ? error.error.message
+          : undefined
+      : undefined;
+
+  if (typeof message === "string" && message.trim().length > 0) {
+    return message;
+  }
+
+  return prettyObject(error);
+}
+
 export function compressImage(file: Blob, maxSize: number): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -341,7 +362,7 @@ export function stream(
           let extraInfo = await res.clone().text();
           try {
             const resJson = await res.clone().json();
-            extraInfo = prettyObject(resJson);
+            extraInfo = formatStreamErrorMessage(resJson);
           } catch {}
 
           if (res.status === 401) {
@@ -567,7 +588,7 @@ export function streamWithThink(
           let extraInfo = await res.clone().text();
           try {
             const resJson = await res.clone().json();
-            extraInfo = prettyObject(resJson);
+            extraInfo = formatStreamErrorMessage(resJson);
           } catch {}
 
           if (res.status === 401) {
