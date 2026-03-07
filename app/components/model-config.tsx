@@ -9,6 +9,9 @@ import { groupBy } from "lodash-es";
 import styles from "./model-config.module.scss";
 import { getModelProvider } from "../utils/model";
 
+const INJECT_SYSTEM_PROMPT_SUBTITLE =
+  "Inject a global system prompt at the start of every request";
+
 export function ModelConfigList(props: {
   modelConfig: ModelConfig;
   updateConfig: (updater: (config: ModelConfig) => void) => void;
@@ -158,7 +161,7 @@ export function ModelConfigList(props: {
 
           <ListItem
             title={Locale.Settings.InjectSystemPrompts.Title}
-            subTitle={Locale.Settings.InjectSystemPrompts.SubTitle}
+            subTitle={INJECT_SYSTEM_PROMPT_SUBTITLE}
           >
             <input
               aria-label={Locale.Settings.InjectSystemPrompts.Title}

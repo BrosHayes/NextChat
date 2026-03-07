@@ -38,6 +38,8 @@ import { EXPORT_MESSAGE_CLASS_NAME, REPO_URL } from "../constant";
 import { getClientConfig } from "../config/client";
 import { type ClientApi, getClientApi } from "../client/api";
 import { getMessageTextContent } from "../utils";
+
+const SHARE_LABEL = "Share";
 import { MaskAvatar } from "./mask";
 import clsx from "clsx";
 
@@ -322,7 +324,7 @@ export function PreviewActions(props: {
       .then((res) => {
         if (!res) return;
         showModal({
-          title: Locale.Export.Share,
+          title: SHARE_LABEL,
           children: [
             <input
               type="text"
@@ -383,7 +385,7 @@ export function PreviewActions(props: {
           onClick={props.download}
         ></IconButton>
         <IconButton
-          text={Locale.Export.Share}
+          text={SHARE_LABEL}
           bordered
           shadow
           icon={loading ? <LoadingIcon /> : <ShareIcon />}

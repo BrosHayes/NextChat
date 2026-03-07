@@ -6,8 +6,7 @@ import EmojiPicker, {
 
 import { ModelType } from "../store";
 
-import BotIconDefault from "../icons/llm-icons/default.svg";
-import BotIconOpenAI from "../icons/llm-icons/openai.svg";
+import LogoIcon from "../icons/logo.svg";
 import BotIconGemini from "../icons/llm-icons/gemini.svg";
 import BotIconGemma from "../icons/llm-icons/gemma.svg";
 import BotIconClaude from "../icons/llm-icons/claude.svg";
@@ -46,7 +45,7 @@ export function AvatarPicker(props: {
 }
 
 export function Avatar(props: { model?: ModelType; avatar?: string }) {
-  let LlmIcon = BotIconDefault;
+  let LlmIcon = LogoIcon;
 
   if (props.model) {
     const modelName = props.model.toLowerCase();
@@ -59,7 +58,7 @@ export function Avatar(props: { model?: ModelType; avatar?: string }) {
       modelName.startsWith("o1") ||
       modelName.startsWith("o3")
     ) {
-      LlmIcon = BotIconOpenAI;
+      LlmIcon = LogoIcon;
     } else if (modelName.startsWith("gemini")) {
       LlmIcon = BotIconGemini;
     } else if (modelName.startsWith("gemma")) {

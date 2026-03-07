@@ -42,7 +42,6 @@ import {
   useAccessStore,
   useAppConfig,
 } from "../store";
-
 import Locale, {
   AllLangs,
   ALL_LANG_OPTIONS,
@@ -50,6 +49,9 @@ import Locale, {
   getLang,
 } from "../locales";
 import { copyToClipboard, clientUpdate, semverCompare } from "../utils";
+
+const SAAS_START_SUBTITLE =
+  "Maintained by NextChat, zero setup needed, unlock the latest AI models";
 import Link from "next/link";
 import {
   Anthropic,
@@ -701,7 +703,7 @@ export function Settings() {
         Locale.Settings.Access.SaasStart.Title +
         `${Locale.Settings.Access.SaasStart.Label}`
       }
-      subTitle={Locale.Settings.Access.SaasStart.SubTitle}
+      subTitle={SAAS_START_SUBTITLE}
     >
       <IconButton
         aria={
