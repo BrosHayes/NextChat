@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSideConfig } from "../config/server";
-import { OPENAI_BASE_URL, ServiceProvider } from "../constant";
+import { OPENAI_BASE_URL, OpenaiPath, ServiceProvider } from "../constant";
 import { cloudflareAIGatewayUrl } from "../utils/cloudflare";
 import { getModelProvider, isModelNotavailableInServer } from "../utils/model";
 
 const serverConfig = getServerSideConfig();
+
+function withBearerToken(apiKey?: string) {
+  const normalizedKey = apiKey?.trim();
+  if (!normalizedKey) return "";
+  return normalizedKey.startsWith("Bearer ")
+    ? normalizedKey
+    : `Bearer ${normalizedKey}`;
+}
 
 export async function requestOpenai(req: NextRequest) {
   const controller = new AbortController();
@@ -28,9 +36,18 @@ export async function requestOpenai(req: NextRequest) {
   }
 
   let path = `${req.nextUrl.pathname}`.replaceAll("/api/openai/", "");
+  const isSpeechRequest = !isAzure && path === OpenaiPath.SpeechPath;
 
   let baseUrl =
-    (isAzure ? serverConfig.azureUrl : serverConfig.baseUrl) || OPENAI_BASE_URL;
+    (isSpeechRequest
+      ? serverConfig.ttsOpenaiUrl || serverConfig.baseUrl
+      : isAzure
+      ? serverConfig.azureUrl
+      : serverConfig.baseUrl) || OPENAI_BASE_URL;
+
+  if (isSpeechRequest && serverConfig.ttsOpenaiApiKey) {
+    authValue = withBearerToken(serverConfig.ttsOpenaiApiKey);
+  }
 
   if (!baseUrl.startsWith("http")) {
     baseUrl = `https://${baseUrl}`;
@@ -109,7 +126,7 @@ export async function requestOpenai(req: NextRequest) {
   };
 
   // #1815 try to refuse gpt4 request
-  if (serverConfig.customModels && req.body) {
+  if (serverConfig.customModels && req.body && !isSpeechRequest) {
     try {
       const clonedBody = await req.text();
       fetchOptions.body = clonedBody;

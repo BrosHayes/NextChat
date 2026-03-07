@@ -8,9 +8,11 @@ declare global {
       PROXY_URL?: string; // docker only
 
       OPENAI_API_KEY?: string;
+      TTS_OPENAI_API_KEY?: string;
       CODE?: string;
 
       BASE_URL?: string;
+      TTS_OPENAI_URL?: string;
       OPENAI_ORG_ID?: string; // openai only
 
       VERCEL?: string;
@@ -183,6 +185,8 @@ export const getServerSideConfig = () => {
   return {
     baseUrl: process.env.BASE_URL,
     apiKey: getApiKey(process.env.OPENAI_API_KEY),
+    ttsOpenaiUrl: process.env.TTS_OPENAI_URL,
+    ttsOpenaiApiKey: getApiKey(process.env.TTS_OPENAI_API_KEY),
     openaiOrgId: process.env.OPENAI_ORG_ID,
 
     isStability,

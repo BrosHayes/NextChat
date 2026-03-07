@@ -338,14 +338,25 @@ export class MsEdgeTTS {
 
   toArrayBuffer(input: string, options?: ProsodyOptions): Promise<ArrayBuffer> {
     return new Promise((resolve, reject) => {
-      let data: Uint8Array[] = [];
+      const data: Uint8Array[] = [];
       const readable = this.toStream(input, options);
       readable.on("data", (chunk) => {
         data.push(chunk);
       });
 
       readable.on("end", () => {
-        resolve(Buffer.concat(data).buffer);
+        if (data.length === 0) {
+          reject(new Error("No audio data received from Edge TTS"));
+          return;
+        }
+
+        const audio = Buffer.concat(data);
+        resolve(
+          audio.buffer.slice(
+            audio.byteOffset,
+            audio.byteOffset + audio.byteLength,
+          ),
+        );
       });
 
       readable.on("error", (err) => {

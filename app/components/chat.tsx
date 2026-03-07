@@ -1291,15 +1291,20 @@ function _Chat() {
     if (speechStatus) {
       ttsPlayer.stop();
       setSpeechStatus(false);
-    } else {
-      var api: ClientApi;
-      api = new ClientApi(ModelProvider.GPT);
-      const config = useAppConfig.getState();
-      setSpeechLoading(true);
+      setSpeechLoading(false);
+      return;
+    }
+
+    const api = new ClientApi(ModelProvider.GPT);
+    const config = useAppConfig.getState();
+    setSpeechLoading(true);
+
+    try {
       ttsPlayer.init();
-      let audioBuffer: ArrayBuffer;
       const { markdownToTxt } = require("markdown-to-txt");
       const textContent = markdownToTxt(text);
+      let audioBuffer: ArrayBuffer;
+
       if (config.ttsConfig.engine !== DEFAULT_TTS_ENGINE) {
         const edgeVoiceName = accessStore.edgeVoiceName();
         const tts = new MsEdgeTTS();
@@ -1316,17 +1321,18 @@ function _Chat() {
           speed: config.ttsConfig.speed,
         });
       }
+
       setSpeechStatus(true);
-      ttsPlayer
-        .play(audioBuffer, () => {
-          setSpeechStatus(false);
-        })
-        .catch((e) => {
-          console.error("[OpenAI Speech]", e);
-          showToast(prettyObject(e));
-          setSpeechStatus(false);
-        })
-        .finally(() => setSpeechLoading(false));
+      await ttsPlayer.play(audioBuffer, () => {
+        setSpeechStatus(false);
+      });
+    } catch (e) {
+      console.error("[TTS]", e);
+      ttsPlayer.stop();
+      setSpeechStatus(false);
+      showToast(prettyObject(e));
+    } finally {
+      setSpeechLoading(false);
     }
   }
 
