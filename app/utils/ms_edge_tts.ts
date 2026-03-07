@@ -218,7 +218,12 @@ export class MsEdgeTTS {
         }
       };
       this._ws!.onerror = function (error: any) {
-        reject("Connect Error: " + error);
+        console.error("[Edge TTS] websocket error", error);
+        reject(
+          new Error(
+            "Edge TTS connection failed. Your browser or network may be blocking speech.platform.bing.com.",
+          ),
+        );
       };
     });
   }

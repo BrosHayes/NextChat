@@ -1318,6 +1318,7 @@ function _Chat() {
           model: config.ttsConfig.model,
           input: textContent,
           voice: config.ttsConfig.voice,
+          response_format: "mp3",
           speed: config.ttsConfig.speed,
         });
       }

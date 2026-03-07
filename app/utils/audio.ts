@@ -5,40 +5,75 @@ type TTSPlayer = {
 };
 
 export function createTTSPlayer(): TTSPlayer {
-  let audioContext: AudioContext | null = null;
-  let audioBufferSourceNode: AudioBufferSourceNode | null = null;
+  let audioElement: HTMLAudioElement | null = null;
+  let objectUrl: string | null = null;
+
+  const cleanup = () => {
+    if (audioElement) {
+      audioElement.pause();
+      audioElement.onended = null;
+      audioElement.onerror = null;
+      audioElement.src = "";
+      audioElement.load();
+      audioElement = null;
+    }
+
+    if (objectUrl) {
+      URL.revokeObjectURL(objectUrl);
+      objectUrl = null;
+    }
+  };
 
   const init = () => {
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    audioContext.suspend();
+    cleanup();
   };
 
   const play = async (audioBuffer: ArrayBuffer, onended: () => void | null) => {
-    if (audioBufferSourceNode) {
-      audioBufferSourceNode.stop();
-      audioBufferSourceNode.disconnect();
-    }
+    cleanup();
 
-    const buffer = await audioContext!.decodeAudioData(audioBuffer);
-    audioBufferSourceNode = audioContext!.createBufferSource();
-    audioBufferSourceNode.buffer = buffer;
-    audioBufferSourceNode.connect(audioContext!.destination);
-    audioContext!.resume().then(() => {
-      audioBufferSourceNode!.start();
+    objectUrl = URL.createObjectURL(
+      new Blob([audioBuffer], { type: "audio/mpeg" }),
+    );
+    const currentAudio = new Audio(objectUrl);
+    currentAudio.preload = "auto";
+    audioElement = currentAudio;
+
+    await new Promise<void>((resolve, reject) => {
+      let settled = false;
+      const resolveOnce = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+      const rejectOnce = (error: unknown) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(error instanceof Error ? error : new Error(String(error)));
+      };
+
+      currentAudio.onended = () => {
+        onended?.();
+        cleanup();
+      };
+
+      currentAudio.onerror = () => {
+        const mediaErrorCode = currentAudio.error?.code;
+        rejectOnce(
+          new Error(
+            mediaErrorCode
+              ? `Failed to play the generated audio (media error ${mediaErrorCode})`
+              : "Failed to play the generated audio",
+          ),
+        );
+      };
+
+      currentAudio.play().then(resolveOnce).catch(rejectOnce);
     });
-    audioBufferSourceNode.onended = onended;
   };
 
   const stop = () => {
-    if (audioBufferSourceNode) {
-      audioBufferSourceNode.stop();
-      audioBufferSourceNode.disconnect();
-      audioBufferSourceNode = null;
-    }
-    if (audioContext) {
-      audioContext.close();
-      audioContext = null;
-    }
+    cleanup();
   };
 
   return { init, play, stop };

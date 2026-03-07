@@ -150,7 +150,7 @@ export class ChatGPTApi implements LLMApi {
       model: options.model,
       input: options.input,
       voice: options.voice,
-      response_format: options.response_format,
+      response_format: options.response_format ?? "mp3",
       speed: options.speed,
     };
 
@@ -176,6 +176,29 @@ export class ChatGPTApi implements LLMApi {
 
       const res = await fetch(speechPath, speechPayload);
       clearTimeout(requestTimeoutId);
+
+      const contentType = res.headers.get("content-type") ?? "";
+      const isAudioResponse =
+        contentType.length === 0 ||
+        contentType.includes("audio/") ||
+        contentType.includes("application/octet-stream");
+
+      if (!res.ok || !isAudioResponse) {
+        const raw = await res.text();
+        let message = raw || `Speech request failed with status ${res.status}`;
+
+        try {
+          const parsed = JSON.parse(raw);
+          message =
+            parsed?.error?.message ??
+            parsed?.message ??
+            parsed?.error ??
+            message;
+        } catch {}
+
+        throw new Error(message);
+      }
+
       return await res.arrayBuffer();
     } catch (e) {
       console.log("[Request] failed to make a speech request", e);
