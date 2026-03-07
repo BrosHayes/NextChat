@@ -119,6 +119,7 @@ import { useAllModels } from "../utils/hooks";
 import { ClientApi, MultimodalContent } from "../client/api";
 import { createTTSPlayer } from "../utils/audio";
 import { MsEdgeTTS, OUTPUT_FORMAT } from "../utils/ms_edge_tts";
+import { splitTextForTTS } from "../utils/tts";
 
 import { isEmpty } from "lodash-es";
 import { getModelProvider } from "../utils/model";
@@ -1292,59 +1293,245 @@ function _Chat() {
   const accessStore = useAccessStore();
   const [speechStatus, setSpeechStatus] = useState(false);
   const [speechLoading, setSpeechLoading] = useState(false);
+  const speechBusyRef = useRef(false);
+  const speechTaskRef = useRef(0);
+  const speechControllersRef = useRef<AbortController[]>([]);
+  const edgeTTSRef = useRef<MsEdgeTTS | null>(null);
 
-  async function openaiSpeech(text: string) {
-    if (speechLoading) {
+  const clearSpeechControllers = useCallback(() => {
+    speechControllersRef.current.forEach((controller) => controller.abort());
+    speechControllersRef.current = [];
+  }, []);
+
+  const closeEdgeTTS = useCallback(() => {
+    if (!edgeTTSRef.current) {
       return;
     }
 
-    if (speechStatus) {
-      ttsPlayer.stop();
-      setSpeechStatus(false);
-      setSpeechLoading(false);
+    try {
+      edgeTTSRef.current.close();
+    } catch {}
+
+    edgeTTSRef.current = null;
+  }, []);
+
+  const stopSpeech = useCallback(() => {
+    speechBusyRef.current = false;
+    speechTaskRef.current += 1;
+    clearSpeechControllers();
+    closeEdgeTTS();
+    ttsPlayer.stop();
+    setSpeechLoading(false);
+    setSpeechStatus(false);
+  }, [clearSpeechControllers, closeEdgeTTS]);
+
+  useEffect(() => stopSpeech, [stopSpeech]);
+
+  function isAbortSpeechError(error: unknown) {
+    return (
+      (error instanceof DOMException && error.name === "AbortError") ||
+      (typeof error === "object" &&
+        error !== null &&
+        "name" in error &&
+        error.name === "AbortError")
+    );
+  }
+
+  async function synthesizeSpeechChunk(
+    chunk: string,
+    api: ClientApi,
+    config: ReturnType<typeof useAppConfig.getState>,
+    edgeTTS: MsEdgeTTS | null,
+  ) {
+    if (config.ttsConfig.engine !== DEFAULT_TTS_ENGINE) {
+      if (!edgeTTS) {
+        throw new Error("Edge TTS client is not initialized");
+      }
+
+      return edgeTTS.toArrayBuffer(chunk, {
+        rate: config.ttsConfig.speed,
+      });
+    }
+
+    let chunkController: AbortController | null = null;
+
+    try {
+      return await api.llm.speech({
+        model: config.ttsConfig.model,
+        input: chunk,
+        voice: config.ttsConfig.voice,
+        response_format: "mp3",
+        speed: config.ttsConfig.speed,
+        onController(controller) {
+          chunkController = controller;
+          speechControllersRef.current.push(controller);
+        },
+      });
+    } finally {
+      if (chunkController) {
+        speechControllersRef.current = speechControllersRef.current.filter(
+          (controller) => controller !== chunkController,
+        );
+      }
+    }
+  }
+
+  async function openaiSpeech(text: string) {
+    if (speechBusyRef.current || speechStatus || speechLoading) {
+      stopSpeech();
       return;
     }
 
     const api = new ClientApi(ModelProvider.GPT);
     const config = useAppConfig.getState();
+    const { markdownToTxt } = require("markdown-to-txt");
+    const textContent = markdownToTxt(text);
+    const chunks = splitTextForTTS(textContent);
+
+    if (chunks.length === 0) {
+      return;
+    }
+
+    const speechTaskId = speechTaskRef.current + 1;
+    speechBusyRef.current = true;
+    speechTaskRef.current = speechTaskId;
     setSpeechLoading(true);
+    setSpeechStatus(false);
 
-    try {
-      ttsPlayer.init();
-      const { markdownToTxt } = require("markdown-to-txt");
-      const textContent = markdownToTxt(text);
-      let audioBuffer: ArrayBuffer;
+    let edgeTTS: MsEdgeTTS | null = null;
+    let firstChunkQueued = false;
+    let hasFailed = false;
 
-      if (config.ttsConfig.engine !== DEFAULT_TTS_ENGINE) {
-        const edgeVoiceName = accessStore.edgeVoiceName();
-        const tts = new MsEdgeTTS();
-        await tts.setMetadata(
-          edgeVoiceName,
-          OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3,
-        );
-        audioBuffer = await tts.toArrayBuffer(textContent);
-      } else {
-        audioBuffer = await api.llm.speech({
-          model: config.ttsConfig.model,
-          input: textContent,
-          voice: config.ttsConfig.voice,
-          response_format: "mp3",
-          speed: config.ttsConfig.speed,
-        });
+    const failSpeech = (error: unknown) => {
+      if (hasFailed || speechTaskRef.current !== speechTaskId) {
+        return;
       }
 
-      setSpeechStatus(true);
-      await ttsPlayer.play(audioBuffer, () => {
+      if (isAbortSpeechError(error)) {
+        return;
+      }
+
+      hasFailed = true;
+      console.error("[TTS]", error);
+      stopSpeech();
+      showToast(prettyObject(error));
+    };
+
+    ttsPlayer.init({
+      onEnded: () => {
+        if (speechTaskRef.current !== speechTaskId) {
+          return;
+        }
+
+        closeEdgeTTS();
+        speechBusyRef.current = false;
+        setSpeechLoading(false);
         setSpeechStatus(false);
-      });
-    } catch (e) {
-      console.error("[TTS]", e);
-      ttsPlayer.stop();
-      setSpeechStatus(false);
-      showToast(prettyObject(e));
-    } finally {
-      setSpeechLoading(false);
+      },
+      onError: failSpeech,
+    });
+
+    try {
+      if (config.ttsConfig.engine !== DEFAULT_TTS_ENGINE) {
+        edgeTTS = new MsEdgeTTS();
+        edgeTTSRef.current = edgeTTS;
+        await edgeTTS.setMetadata(
+          accessStore.edgeVoiceName(),
+          OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3,
+        );
+      }
+    } catch (error) {
+      failSpeech(error);
+      return;
     }
+
+    if (speechTaskRef.current !== speechTaskId) {
+      closeEdgeTTS();
+      return;
+    }
+
+    const readyBuffers = new Map<number, ArrayBuffer>();
+    let nextChunkToRequest = 0;
+    let nextChunkToPlay = 0;
+    let activeRequests = 0;
+    let completedRequests = 0;
+    const concurrency =
+      config.ttsConfig.engine === DEFAULT_TTS_ENGINE ? 2 : 1;
+
+    const flushReadyBuffers = () => {
+      if (speechTaskRef.current !== speechTaskId || hasFailed) {
+        return;
+      }
+
+      while (readyBuffers.has(nextChunkToPlay)) {
+        const audioBuffer = readyBuffers.get(nextChunkToPlay);
+
+        if (!audioBuffer) {
+          break;
+        }
+
+        readyBuffers.delete(nextChunkToPlay);
+        ttsPlayer.enqueue(audioBuffer);
+
+        if (!firstChunkQueued) {
+          firstChunkQueued = true;
+          setSpeechStatus(true);
+          setSpeechLoading(false);
+        }
+
+        nextChunkToPlay += 1;
+      }
+
+      if (
+        completedRequests === chunks.length &&
+        nextChunkToPlay === chunks.length &&
+        !hasFailed
+      ) {
+        if (firstChunkQueued) {
+          ttsPlayer.finish();
+        } else {
+          closeEdgeTTS();
+          speechBusyRef.current = false;
+          setSpeechLoading(false);
+          setSpeechStatus(false);
+        }
+      }
+    };
+
+    const runNextChunk = () => {
+      while (
+        !hasFailed &&
+        speechTaskRef.current === speechTaskId &&
+        activeRequests < concurrency &&
+        nextChunkToRequest < chunks.length
+      ) {
+        const chunkIndex = nextChunkToRequest;
+        const chunkText = chunks[chunkIndex];
+        nextChunkToRequest += 1;
+        activeRequests += 1;
+
+        void synthesizeSpeechChunk(chunkText, api, config, edgeTTS)
+          .then((audioBuffer) => {
+            if (speechTaskRef.current !== speechTaskId || hasFailed) {
+              return;
+            }
+
+            readyBuffers.set(chunkIndex, audioBuffer);
+            flushReadyBuffers();
+          })
+          .catch((error) => {
+            failSpeech(error);
+          })
+          .finally(() => {
+            activeRequests -= 1;
+            completedRequests += 1;
+            flushReadyBuffers();
+            runNextChunk();
+          });
+      }
+    };
+
+    runNextChunk();
   }
 
   const context: RenderMessage[] = useMemo(() => {
@@ -1933,22 +2120,17 @@ function _Chat() {
                                       {config.ttsConfig.enable && (
                                         <ChatAction
                                           text={
-                                            speechLoading
-                                              ? `${Locale.Chat.Actions.Speech}...`
-                                              : speechStatus
+                                            speechStatus || speechLoading
                                               ? Locale.Chat.Actions.StopSpeech
                                               : Locale.Chat.Actions.Speech
                                           }
                                           icon={
-                                            speechLoading ? (
-                                              <LoadingButtonIcon />
-                                            ) : speechStatus ? (
+                                            speechStatus || speechLoading ? (
                                               <SpeakStopIcon />
                                             ) : (
                                               <SpeakIcon />
                                             )
                                           }
-                                          disabled={speechLoading}
                                           onClick={() =>
                                             openaiSpeech(
                                               getMessageTextContent(message),
