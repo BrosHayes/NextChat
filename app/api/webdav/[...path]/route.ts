@@ -1,13 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { STORAGE_KEY, internalAllowedWebDavEndpoints } from "../../../constant";
-import { getServerSideConfig } from "@/app/config/server";
-
-const config = getServerSideConfig();
-
-const mergedAllowedWebDavEndpoints = [
-  ...internalAllowedWebDavEndpoints,
-  ...config.allowedWebDavEndpoints,
-].filter((domain) => Boolean(domain.trim()));
+import { STORAGE_KEY } from "../../../constant";
 
 const normalizeUrl = (url: string) => {
   try {
@@ -31,21 +23,11 @@ async function handle(
   let endpoint = requestUrl.searchParams.get("endpoint");
   let proxy_method = requestUrl.searchParams.get("proxy_method") || req.method;
 
-  // Validate the endpoint to prevent potential SSRF attacks
-  if (
-    !endpoint ||
-    !mergedAllowedWebDavEndpoints.some((allowedEndpoint) => {
-      const normalizedAllowedEndpoint = normalizeUrl(allowedEndpoint);
-      const normalizedEndpoint = normalizeUrl(endpoint as string);
+  const normalizedEndpoint = endpoint ? normalizeUrl(endpoint) : null;
 
-      return (
-        normalizedEndpoint &&
-        normalizedEndpoint.hostname === normalizedAllowedEndpoint?.hostname &&
-        normalizedEndpoint.pathname.startsWith(
-          normalizedAllowedEndpoint.pathname,
-        )
-      );
-    })
+  if (
+    !normalizedEndpoint ||
+    !["http:", "https:"].includes(normalizedEndpoint.protocol)
   ) {
     return NextResponse.json(
       {
@@ -57,6 +39,8 @@ async function handle(
       },
     );
   }
+
+  endpoint = normalizedEndpoint.toString();
 
   if (!endpoint?.endsWith("/")) {
     endpoint += "/";
