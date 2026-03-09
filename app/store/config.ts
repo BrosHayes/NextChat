@@ -68,12 +68,12 @@ export const DEFAULT_CONFIG = {
     providerName: "OpenAI" as ServiceProvider,
     temperature: 0.5,
     top_p: 1,
-    max_tokens: 4000,
+    max_tokens: 64000,
     presence_penalty: 0,
     frequency_penalty: 0,
     sendMemory: true,
-    historyMessageCount: 4,
-    compressMessageLengthThreshold: 1000,
+    historyMessageCount: 10,
+    compressMessageLengthThreshold: 32000,
     compressModel: "",
     compressProviderName: "",
     enableInjectSystemPrompts: true,
@@ -195,7 +195,7 @@ export const useAppConfig = createPersistStore(
   }),
   {
     name: StoreKey.Config,
-    version: 4.1,
+    version: 4.2,
 
     merge(persistedState, currentState) {
       const state = persistedState as ChatConfig | undefined;
@@ -253,6 +253,14 @@ export const useAppConfig = createPersistStore(
           DEFAULT_CONFIG.modelConfig.compressModel;
         state.modelConfig.compressProviderName =
           DEFAULT_CONFIG.modelConfig.compressProviderName;
+      }
+
+      if (version < 4.2) {
+        state.modelConfig.max_tokens = DEFAULT_CONFIG.modelConfig.max_tokens;
+        state.modelConfig.historyMessageCount =
+          DEFAULT_CONFIG.modelConfig.historyMessageCount;
+        state.modelConfig.compressMessageLengthThreshold =
+          DEFAULT_CONFIG.modelConfig.compressMessageLengthThreshold;
       }
 
       return state as any;

@@ -32,7 +32,7 @@ import Locale, { getLang } from "../locales";
 import { prettyObject } from "../utils/format";
 import { createPersistStore } from "../utils/store";
 import { estimateTokenLength } from "../utils/token";
-import { ModelConfig, ModelType, useAppConfig } from "./config";
+import { DEFAULT_CONFIG, ModelConfig, ModelType, useAppConfig } from "./config";
 import { useAccessStore } from "./access";
 import { collectModelsWithDefaultModel } from "../utils/model";
 import { createEmptyMask, Mask } from "./mask";
@@ -734,7 +734,10 @@ export const useChatStore = createPersistStore(
 
         const historyMsgLength = countMessages(toBeSummarizedMsgs);
 
-        if (historyMsgLength > (modelConfig?.max_tokens || 4000)) {
+        if (
+          historyMsgLength >
+          (modelConfig?.max_tokens || DEFAULT_CONFIG.modelConfig.max_tokens)
+        ) {
           const n = toBeSummarizedMsgs.length;
           toBeSummarizedMsgs = toBeSummarizedMsgs.slice(
             Math.max(0, n - modelConfig.historyMessageCount),
@@ -876,8 +879,10 @@ export const useChatStore = createPersistStore(
           newSession.topic = oldSession.topic;
           newSession.messages = [...oldSession.messages];
           newSession.mask.modelConfig.sendMemory = true;
-          newSession.mask.modelConfig.historyMessageCount = 4;
-          newSession.mask.modelConfig.compressMessageLengthThreshold = 1000;
+          newSession.mask.modelConfig.historyMessageCount =
+            DEFAULT_CONFIG.modelConfig.historyMessageCount;
+          newSession.mask.modelConfig.compressMessageLengthThreshold =
+            DEFAULT_CONFIG.modelConfig.compressMessageLengthThreshold;
           newState.sessions.push(newSession);
         }
       }
