@@ -52,6 +52,8 @@ export type AppState = {
   >;
 };
 
+type ChatAppState = AppState[StoreKey.Chat];
+
 type Merger<T extends keyof AppState, U = AppState[T]> = (
   localState: U,
   remoteState: U,
@@ -61,14 +63,34 @@ type StateMerger = {
   [K in keyof AppState]: Merger<K>;
 };
 
+function mergeDeletedSessionIds(...sessionIdLists: (string[] | undefined)[]) {
+  return Array.from(new Set(sessionIdLists.flatMap((ids) => ids ?? [])));
+}
+
+function getDeletedSessionIdSet(chatState: ChatAppState) {
+  return new Set(chatState.deletedSessionIds ?? []);
+}
+
 // we merge remote state to local state
 const MergeStates: StateMerger = {
   [StoreKey.Chat]: (localState, remoteState) => {
+    const localDeletedSessionIds = getDeletedSessionIdSet(localState);
+    const remoteDeletedSessionIds = getDeletedSessionIdSet(remoteState);
+    const deletedSessionIds = new Set(
+      mergeDeletedSessionIds(
+        Array.from(localDeletedSessionIds),
+        Array.from(remoteDeletedSessionIds),
+      ),
+    );
+
+    localState.deletedSessionIds = Array.from(deletedSessionIds);
+
     // merge sessions
     const localSessions: Record<string, ChatSession> = {};
     localState.sessions.forEach((s) => (localSessions[s.id] = s));
 
     remoteState.sessions.forEach((remoteSession) => {
+      if (deletedSessionIds.has(remoteSession.id)) return;
       // skip empty chats
       if (remoteSession.messages.length === 0) return;
 
@@ -91,6 +113,10 @@ const MergeStates: StateMerger = {
         );
       }
     });
+
+    localState.sessions = localState.sessions.filter(
+      (session) => !localDeletedSessionIds.has(session.id),
+    );
 
     // sort local sessions with date field in desc order
     localState.sessions.sort(
@@ -143,6 +169,19 @@ export function mergeAppState(localState: AppState, remoteState: AppState) {
   });
 
   return localState;
+}
+
+export function getSyncAppState(appState: AppState) {
+  const syncState = JSON.parse(JSON.stringify(appState)) as AppState;
+  const chatState = syncState[StoreKey.Chat];
+  const deletedSessionIds = getDeletedSessionIdSet(chatState);
+
+  chatState.deletedSessionIds = Array.from(deletedSessionIds);
+  chatState.sessions = chatState.sessions.filter(
+    (session) => !deletedSessionIds.has(session.id),
+  );
+
+  return syncState;
 }
 
 /**

@@ -4,6 +4,7 @@ import { createPersistStore } from "../utils/store";
 import {
   AppState,
   getLocalAppState,
+  getSyncAppState,
   GetStoreState,
   mergeAppState,
   setLocalAppState,
@@ -97,7 +98,8 @@ export const useSyncStore = createPersistStore(
       try {
         const remoteState = await client.get(config.username);
         if (!remoteState || remoteState === "") {
-          await client.set(config.username, JSON.stringify(localState));
+          const syncState = getSyncAppState(localState);
+          await client.set(config.username, JSON.stringify(syncState));
           console.log(
             "[Sync] Remote state is empty, using local state instead.",
           );
@@ -114,7 +116,8 @@ export const useSyncStore = createPersistStore(
         throw e;
       }
 
-      await client.set(config.username, JSON.stringify(localState));
+      const syncState = getSyncAppState(localState);
+      await client.set(config.username, JSON.stringify(syncState));
 
       this.markSyncTime();
     },

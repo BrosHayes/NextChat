@@ -158,6 +158,10 @@ function countMessages(msgs: ChatMessage[]) {
   );
 }
 
+function mergeDeletedSessionIds(...sessionIdLists: (string[] | undefined)[]) {
+  return Array.from(new Set(sessionIdLists.flatMap((ids) => ids ?? [])));
+}
+
 function fillTemplateWith(input: string, modelConfig: ModelConfig) {
   const cutoff =
     KnowledgeCutOffDate[modelConfig.model] ?? KnowledgeCutOffDate.default;
@@ -227,6 +231,7 @@ const DEFAULT_CHAT_STATE = {
   sessions: [createEmptySession()],
   currentSessionIndex: 0,
   lastInput: "",
+  deletedSessionIds: [] as string[],
 };
 
 export const useChatStore = createPersistStore(
@@ -267,9 +272,14 @@ export const useChatStore = createPersistStore(
       },
 
       clearSessions() {
+        const deletedSessionIds = mergeDeletedSessionIds(
+          get().deletedSessionIds,
+          get().sessions.map((session) => session.id),
+        );
         set(() => ({
           sessions: [createEmptySession()],
           currentSessionIndex: 0,
+          deletedSessionIds,
         }));
       },
 
@@ -358,11 +368,18 @@ export const useChatStore = createPersistStore(
         const restoreState = {
           currentSessionIndex: get().currentSessionIndex,
           sessions: get().sessions.slice(),
+          deletedSessionIds: get().deletedSessionIds.slice(),
         };
+
+        const deletedSessionIds = mergeDeletedSessionIds(
+          get().deletedSessionIds,
+          [deletedSession.id],
+        );
 
         set(() => ({
           currentSessionIndex: nextIndex,
           sessions,
+          deletedSessionIds,
         }));
 
         showToast(
@@ -863,7 +880,7 @@ export const useChatStore = createPersistStore(
   },
   {
     name: StoreKey.Chat,
-    version: 3.3,
+    version: 3.4,
     migrate(persistedState, version) {
       const state = persistedState as any;
       const newState = JSON.parse(
@@ -928,6 +945,10 @@ export const useChatStore = createPersistStore(
           s.mask.modelConfig.compressModel = "";
           s.mask.modelConfig.compressProviderName = "";
         });
+      }
+
+      if (version < 3.4) {
+        newState.deletedSessionIds = [];
       }
 
       return newState as any;
