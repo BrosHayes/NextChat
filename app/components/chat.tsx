@@ -65,6 +65,7 @@ import {
 import {
   autoGrowTextArea,
   copyToClipboard,
+  getDisplayImageUrl,
   getMessageImages,
   getMessageTextContent,
   isDalle3,
@@ -2227,7 +2228,9 @@ function _Chat() {
                             {getMessageImages(message).length == 1 && (
                               <img
                                 className={styles["chat-message-item-image"]}
-                                src={getMessageImages(message)[0]}
+                                src={getDisplayImageUrl(
+                                  getMessageImages(message)[0],
+                                )}
                                 alt=""
                               />
                             )}
@@ -2251,7 +2254,7 @@ function _Chat() {
                                           ]
                                         }
                                         key={index}
-                                        src={image}
+                                        src={getDisplayImageUrl(image)}
                                         alt=""
                                       />
                                     );

@@ -280,6 +280,28 @@ export function getMessageImages(message: RequestMessage): string[] {
   return urls;
 }
 
+export function getDisplayImageUrl(imageUrl: string) {
+  if (
+    !imageUrl ||
+    imageUrl.startsWith("/") ||
+    imageUrl.startsWith("./") ||
+    imageUrl.startsWith("../") ||
+    imageUrl.startsWith("data:") ||
+    imageUrl.startsWith("blob:")
+  ) {
+    return imageUrl;
+  }
+
+  try {
+    const url = new URL(imageUrl);
+    if (url.protocol === "http:" || url.protocol === "https:") {
+      return `/api/image?url=${encodeURIComponent(imageUrl)}`;
+    }
+  } catch {}
+
+  return imageUrl;
+}
+
 export function isVisionModel(model: string) {
   const visionModels = useAccessStore.getState().visionModels;
   const envVisionModels = visionModels?.split(",").map((m) => m.trim());

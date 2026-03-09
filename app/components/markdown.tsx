@@ -6,7 +6,7 @@ import RehypeKatex from "rehype-katex";
 import RemarkGfm from "remark-gfm";
 import RehypeHighlight from "rehype-highlight";
 import { useRef, useState, RefObject, useEffect, useMemo } from "react";
-import { copyToClipboard, useWindowSize } from "../utils";
+import { copyToClipboard, getDisplayImageUrl, useWindowSize } from "../utils";
 import mermaid from "mermaid";
 import Locale from "../locales";
 import LoadingIcon from "../icons/three-dots.svg";
@@ -308,6 +308,21 @@ function _MarkDownContent(props: { content: string }) {
           const isInternal = /^\/#/i.test(href);
           const target = isInternal ? "_self" : aProps.target ?? "_blank";
           return <a {...aProps} target={target} />;
+        },
+        img: (imgProps) => {
+          const src = getDisplayImageUrl(String(imgProps.src || ""));
+          if (!src) return null;
+
+          return (
+            <img
+              {...imgProps}
+              src={src}
+              alt={imgProps.alt ?? ""}
+              loading="lazy"
+              style={{ cursor: "zoom-in" }}
+              onClick={() => showImageModal(src)}
+            />
+          );
         },
       }}
     >

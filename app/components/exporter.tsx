@@ -15,6 +15,7 @@ import { IconButton } from "./button";
 import {
   copyToClipboard,
   downloadAs,
+  getDisplayImageUrl,
   getMessageImages,
   useMobileScreen,
 } from "../utils";
@@ -587,7 +588,7 @@ export function ImagePreviewer(props: {
                 {getMessageImages(m).length == 1 && (
                   <img
                     key={i}
-                    src={getMessageImages(m)[0]}
+                    src={getDisplayImageUrl(getMessageImages(m)[0])}
                     alt="message"
                     className={styles["message-image"]}
                   />
@@ -604,7 +605,7 @@ export function ImagePreviewer(props: {
                     {getMessageImages(m).map((src, i) => (
                       <img
                         key={i}
-                        src={src}
+                        src={getDisplayImageUrl(src)}
                         alt="message"
                         className={styles["message-image-multi"]}
                       />
