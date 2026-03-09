@@ -83,6 +83,10 @@ export const useSyncStore = createPersistStore(
       set({ lastSyncTime: Date.now(), lastProvider: get().provider });
     },
 
+    resetSyncTime() {
+      set({ lastSyncTime: 0, lastProvider: "" });
+    },
+
     export() {
       const state = getLocalAppState();
       const datePart = isApp
@@ -127,6 +131,7 @@ export const useSyncStore = createPersistStore(
         if (!remoteState || remoteState === "") {
           const syncState = getSyncAppState(localState);
           await client.set(config.username, JSON.stringify(syncState));
+          this.markSyncTime();
           console.log(
             "[Sync] Remote state is empty, using local state instead.",
           );
@@ -147,6 +152,15 @@ export const useSyncStore = createPersistStore(
       await client.set(config.username, JSON.stringify(syncState));
 
       this.markSyncTime();
+    },
+
+    async clearBackup() {
+      const provider = get().provider;
+      const config = get()[provider];
+      const client = this.getClient();
+
+      await client.clear(config.username);
+      this.resetSyncTime();
     },
 
     async check() {

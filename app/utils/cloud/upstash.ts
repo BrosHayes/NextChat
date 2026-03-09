@@ -51,6 +51,19 @@ export function createUpstashClient(store: SyncStore) {
       console.log("[Upstash] set key = ", key, res.status, res.statusText);
     },
 
+    async redisDel(key: string) {
+      const res = await fetch(this.path(`del/${key}`, proxyUrl), {
+        method: "GET",
+        headers: this.headers(),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Failed to clear Upstash key: ${key}`);
+      }
+
+      console.log("[Upstash] del key = ", key, res.status, res.statusText);
+    },
+
     async get() {
       const chunkCount = Number(await this.redisGet(chunkCountKey));
       if (!Number.isInteger(chunkCount)) return;
@@ -73,6 +86,19 @@ export function createUpstashClient(store: SyncStore) {
         index += 1;
       }
       await this.redisSet(chunkCountKey, index.toString());
+    },
+
+    async clear() {
+      const chunkCount = Number(await this.redisGet(chunkCountKey));
+      const deleteTasks: Promise<void>[] = [this.redisDel(chunkCountKey)];
+
+      if (Number.isInteger(chunkCount) && chunkCount > 0) {
+        for (let i = 0; i < chunkCount; i += 1) {
+          deleteTasks.push(this.redisDel(chunkIndexKey(i)));
+        }
+      }
+
+      await Promise.all(deleteTasks);
     },
 
     headers() {

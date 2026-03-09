@@ -49,11 +49,12 @@ async function handle(
   const endpointPath = params.path.join("/");
   const targetPath = `${endpoint}${endpointPath}`;
 
-  // only allow MKCOL, GET, PUT
+  // only allow MKCOL, GET, PUT, DELETE
   if (
     proxy_method !== "MKCOL" &&
     proxy_method !== "GET" &&
-    proxy_method !== "PUT"
+    proxy_method !== "PUT" &&
+    proxy_method !== "DELETE"
   ) {
     return NextResponse.json(
       {
@@ -92,8 +93,21 @@ async function handle(
     );
   }
 
-  //   for PUT request, only allow request ending with fileName
+  // for PUT request, only allow request ending with fileName
   if (proxy_method === "PUT" && !targetPath.endsWith(fileName)) {
+    return NextResponse.json(
+      {
+        error: true,
+        msg: "you are not allowed to request " + targetPath,
+      },
+      {
+        status: 403,
+      },
+    );
+  }
+
+  // for DELETE request, only allow request ending with fileName
+  if (proxy_method === "DELETE" && !targetPath.endsWith(fileName)) {
     return NextResponse.json(
       {
         error: true,
@@ -108,7 +122,7 @@ async function handle(
   const targetUrl = targetPath;
 
   const method = proxy_method || req.method;
-  const shouldNotHaveBody = ["get", "head"].includes(
+  const shouldNotHaveBody = ["get", "head", "delete"].includes(
     method?.toLowerCase() ?? "",
   );
 
@@ -146,6 +160,7 @@ async function handle(
 
 export const PUT = handle;
 export const GET = handle;
+export const DELETE = handle;
 export const OPTIONS = handle;
 
 export const runtime = "edge";

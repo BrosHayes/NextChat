@@ -227,6 +227,11 @@ const en: LocaleType = {
       NotSyncYet: "Not sync yet",
       Success: "Sync Success",
       Fail: "Sync Fail",
+      ClearBackup: "Clear Backup",
+      ClearBackupConfirm:
+        "Confirm to clear all remote backup data for the current sync target?",
+      ClearSuccess: "Backup Cleared",
+      ClearFail: "Failed to clear backup",
 
       Config: {
         Modal: {

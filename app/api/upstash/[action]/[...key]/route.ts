@@ -24,8 +24,12 @@ async function handle(
     );
   }
 
-  // only allow upstash get and set method
-  if (params.action !== "get" && params.action !== "set") {
+  // only allow upstash get, set and del method
+  if (
+    params.action !== "get" &&
+    params.action !== "set" &&
+    params.action !== "del"
+  ) {
     console.log("[Upstash Route] forbidden action ", params.action);
     return NextResponse.json(
       {

@@ -535,6 +535,32 @@ function SyncItems() {
             />
             {couldSync && (
               <IconButton
+                aria={
+                  Locale.Settings.Sync.CloudState +
+                  Locale.Settings.Sync.ClearBackup
+                }
+                icon={<ClearIcon />}
+                text={Locale.Settings.Sync.ClearBackup}
+                type="danger"
+                onClick={async () => {
+                  if (
+                    !(await showConfirm(Locale.Settings.Sync.ClearBackupConfirm))
+                  ) {
+                    return;
+                  }
+
+                  try {
+                    await syncStore.clearBackup();
+                    showToast(Locale.Settings.Sync.ClearSuccess);
+                  } catch (e) {
+                    showToast(Locale.Settings.Sync.ClearFail);
+                    console.error("[Sync] clear backup failed", e);
+                  }
+                }}
+              />
+            )}
+            {couldSync && (
+              <IconButton
                 icon={<ResetIcon />}
                 text={Locale.UI.Sync}
                 onClick={async () => {

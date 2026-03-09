@@ -22,6 +22,7 @@ type SyncClientConfig = {
 export type SyncClient = {
   get: (key: string) => Promise<string>;
   set: (key: string, value: string) => Promise<void>;
+  clear: (key: string) => Promise<void>;
   check: () => Promise<boolean>;
 };
 

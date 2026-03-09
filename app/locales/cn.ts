@@ -225,6 +225,10 @@ const cn = {
       NotSyncYet: "还没有进行过同步",
       Success: "同步成功",
       Fail: "同步失败",
+      ClearBackup: "清空备份",
+      ClearBackupConfirm: "确认清空当前同步目标中的所有远端备份数据？",
+      ClearSuccess: "备份已清空",
+      ClearFail: "清空备份失败",
 
       Config: {
         Modal: {

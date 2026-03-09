@@ -59,6 +59,19 @@ export function createWebDavClient(store: SyncStore) {
       console.log("[WebDav] set key = ", key, res.status, res.statusText);
     },
 
+    async clear(key: string) {
+      const res = await fetch(this.path(fileName, proxyUrl, "DELETE"), {
+        method: "DELETE",
+        headers: this.headers(),
+      });
+
+      if (!res.ok && res.status !== 404) {
+        throw new Error(`Failed to clear WebDAV backup: ${res.status}`);
+      }
+
+      console.log("[WebDav] clear key = ", key, res.status, res.statusText);
+    },
+
     headers() {
       const auth = btoa(config.username + ":" + config.password);
 
