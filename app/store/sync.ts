@@ -1,5 +1,5 @@
 import { getClientConfig } from "../config/client";
-import { ApiPath, STORAGE_KEY, StoreKey } from "../constant";
+import { ApiPath, RUNTIME_CONFIG_DOM, STORAGE_KEY, StoreKey } from "../constant";
 import { createPersistStore } from "../utils/store";
 import {
   AppState,
@@ -15,7 +15,7 @@ import Locale from "../locales";
 import { createSyncClient, ProviderType } from "../utils/cloud";
 
 export interface WebDavConfig {
-  server: string;
+  endpoint: string;
   username: string;
   password: string;
 }
@@ -23,16 +23,43 @@ export interface WebDavConfig {
 const isApp = !!getClientConfig()?.isApp;
 export type SyncStore = GetStoreState<typeof useSyncStore>;
 
+type RuntimeConfig = {
+  syncWebdav?: Partial<WebDavConfig>;
+};
+
+function getRuntimeConfig(): RuntimeConfig {
+  if (typeof document === "undefined") {
+    return {};
+  }
+
+  try {
+    const meta = document.head.querySelector(
+      `meta[name='${RUNTIME_CONFIG_DOM}']`,
+    ) as HTMLMetaElement | null;
+
+    return JSON.parse(meta?.content ?? "{}") as RuntimeConfig;
+  } catch (error) {
+    console.error("[Runtime Config] failed to parse", error);
+    return {};
+  }
+}
+
+function getDefaultWebDavConfig(): WebDavConfig {
+  const config = getRuntimeConfig().syncWebdav;
+
+  return {
+    endpoint: config?.endpoint ?? "",
+    username: config?.username ?? "",
+    password: config?.password ?? "",
+  };
+}
+
 const DEFAULT_SYNC_STATE = {
   provider: ProviderType.WebDAV,
   useProxy: true,
   proxyUrl: ApiPath.Cors as string,
 
-  webdav: {
-    endpoint: "",
-    username: "",
-    password: "",
-  },
+  webdav: getDefaultWebDavConfig(),
 
   upstash: {
     endpoint: "",
@@ -129,7 +156,7 @@ export const useSyncStore = createPersistStore(
   }),
   {
     name: StoreKey.Sync,
-    version: 1.2,
+    version: 1.3,
 
     migrate(persistedState, version) {
       const newState = persistedState as typeof DEFAULT_SYNC_STATE;
@@ -145,6 +172,15 @@ export const useSyncStore = createPersistStore(
         ) {
           newState.proxyUrl = "";
         }
+      }
+
+      if (version < 1.3) {
+        const defaultWebdav = getDefaultWebDavConfig();
+        newState.webdav = {
+          endpoint: newState.webdav?.endpoint || defaultWebdav.endpoint,
+          username: newState.webdav?.username || defaultWebdav.username,
+          password: newState.webdav?.password || defaultWebdav.password,
+        };
       }
 
       return newState as any;

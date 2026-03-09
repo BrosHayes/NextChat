@@ -1395,10 +1395,7 @@ function _Chat() {
     const { markdownToTxt } = require("markdown-to-txt");
     const textContent = markdownToTxt(text);
     const chunks = splitTextForTTS(textContent);
-    const ttsVoice =
-      config.ttsConfig.engine !== DEFAULT_TTS_ENGINE
-        ? accessStore.edgeVoiceName()
-        : config.ttsConfig.voice;
+    const ttsVoice = config.ttsConfig.voice;
 
     if (chunks.length === 0) {
       return;

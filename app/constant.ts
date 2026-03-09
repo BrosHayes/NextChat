@@ -465,15 +465,15 @@ export const KnowledgeCutOffDate: Record<string, string> = {
 export const DEFAULT_TTS_ENGINE = "OpenAI-TTS";
 export const DEFAULT_TTS_ENGINES = ["OpenAI-TTS", "Edge-TTS"];
 export const DEFAULT_TTS_MODEL = "tts-1";
-export const DEFAULT_TTS_VOICE = "alloy";
-export const DEFAULT_TTS_MODELS = ["tts-1", "tts-1-hd"];
-export const DEFAULT_TTS_VOICES = [
+export const OPENAI_TTS_VOICES = [
   "alloy",
   "echo",
   "fable",
   "onyx",
   "nova",
   "shimmer",
+] as const;
+export const EDGE_TTS_VOICES = [
   "zh-CN-XiaoyiNeural",
   "zh-CN-YunxiNeural",
   "zh-CN-XiaochenNeural",
@@ -483,7 +483,15 @@ export const DEFAULT_TTS_VOICES = [
   "zh-CN-XiaoxiaoNeural",
   "zh-CN-Xiaoxiao:DragonHDFlashLatestNeural",
   "zh-CN-Xiaoxiao2:DragonHDFlashLatestNeural",
-];
+] as const;
+export const DEFAULT_OPENAI_TTS_VOICE = "alloy";
+export const DEFAULT_EDGE_TTS_VOICE = "zh-CN-XiaoxiaoNeural";
+export const DEFAULT_TTS_VOICE = DEFAULT_EDGE_TTS_VOICE;
+export const DEFAULT_TTS_MODELS = ["tts-1", "tts-1-hd"];
+export const DEFAULT_TTS_VOICES = [
+  ...OPENAI_TTS_VOICES,
+  ...EDGE_TTS_VOICES,
+] as const;
 
 export const VISION_MODEL_REGEXES = [
   /vision/,

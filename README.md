@@ -335,6 +335,24 @@ Change default model
 
 Add additional models to have vision capabilities, beyond the default pattern matching. Multiple models should be separated by commas.
 
+### `SYNC_WEBDAV_ENDPOINT` (optional)
+
+> Default: Empty
+
+Prefill the default WebDAV endpoint in Sync settings.
+
+### `SYNC_WEBDAV_USERNAME` (optional)
+
+> Default: Empty
+
+Prefill the default WebDAV username in Sync settings.
+
+### `SYNC_WEBDAV_PASSWORD` (optional)
+
+> Default: Empty
+
+Prefill the default WebDAV password in Sync settings.
+
 ### `WHITE_WEBDAV_ENDPOINTS` (optional)
 
 You can use this option if you want to increase the number of webdav service addresses you are allowed to access, as required by the format：

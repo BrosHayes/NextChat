@@ -225,6 +225,24 @@ DeepSeek Api Url.
 
 如果你想禁用从链接解析预制设置，将此环境变量设置为 1 即可。
 
+### `SYNC_WEBDAV_ENDPOINT` （可选）
+
+> 默认值：空
+
+用于在同步设置中预填默认的 WebDAV 地址。
+
+### `SYNC_WEBDAV_USERNAME` （可选）
+
+> 默认值：空
+
+用于在同步设置中预填默认的 WebDAV 用户名。
+
+### `SYNC_WEBDAV_PASSWORD` （可选）
+
+> 默认值：空
+
+用于在同步设置中预填默认的 WebDAV 密码。
+
 ### `WHITE_WEBDAV_ENDPOINTS` (可选)
 
 如果你想增加允许访问的webdav服务地址，可以使用该选项，格式要求：

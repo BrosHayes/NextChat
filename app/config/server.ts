@@ -13,6 +13,9 @@ declare global {
 
       BASE_URL?: string;
       TTS_OPENAI_URL?: string;
+      SYNC_WEBDAV_ENDPOINT?: string;
+      SYNC_WEBDAV_USERNAME?: string;
+      SYNC_WEBDAV_PASSWORD?: string;
       OPENAI_ORG_ID?: string; // openai only
 
       VERCEL?: string;
@@ -183,6 +186,9 @@ export const getServerSideConfig = () => {
     apiKey: getApiKey(process.env.OPENAI_API_KEY),
     ttsOpenaiUrl: process.env.TTS_OPENAI_URL,
     ttsOpenaiApiKey: getApiKey(process.env.TTS_OPENAI_API_KEY),
+    syncWebdavEndpoint: process.env.SYNC_WEBDAV_ENDPOINT ?? "",
+    syncWebdavUsername: process.env.SYNC_WEBDAV_USERNAME ?? "",
+    syncWebdavPassword: process.env.SYNC_WEBDAV_PASSWORD ?? "",
     openaiOrgId: process.env.OPENAI_ORG_ID,
 
     isStability,

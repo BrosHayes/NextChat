@@ -4,6 +4,7 @@ import { getClientConfig } from "../config/client";
 import {
   DEFAULT_INPUT_TEMPLATE,
   DEFAULT_MODELS,
+  DEFAULT_OPENAI_TTS_VOICE,
   DEFAULT_SIDEBAR_WIDTH,
   DEFAULT_TTS_ENGINE,
   DEFAULT_TTS_ENGINES,
@@ -84,7 +85,7 @@ export const DEFAULT_CONFIG = {
   },
 
   ttsConfig: {
-    enable: false,
+    enable: true,
     autoplay: false,
     engine: DEFAULT_TTS_ENGINE,
     model: DEFAULT_TTS_MODEL,
@@ -195,7 +196,7 @@ export const useAppConfig = createPersistStore(
   }),
   {
     name: StoreKey.Config,
-    version: 4.2,
+    version: 4.3,
 
     merge(persistedState, currentState) {
       const state = persistedState as ChatConfig | undefined;
@@ -261,6 +262,22 @@ export const useAppConfig = createPersistStore(
           DEFAULT_CONFIG.modelConfig.historyMessageCount;
         state.modelConfig.compressMessageLengthThreshold =
           DEFAULT_CONFIG.modelConfig.compressMessageLengthThreshold;
+      }
+
+      if (version < 4.3) {
+        const ttsConfig = state.ttsConfig;
+        const usesLegacyDefaultTTSConfig =
+          !ttsConfig ||
+          ((ttsConfig.enable ?? false) === false &&
+            (ttsConfig.engine ?? DEFAULT_TTS_ENGINE) === DEFAULT_TTS_ENGINE &&
+            (ttsConfig.model ?? DEFAULT_TTS_MODEL) === DEFAULT_TTS_MODEL &&
+            (ttsConfig.voice ?? DEFAULT_OPENAI_TTS_VOICE) ===
+              DEFAULT_OPENAI_TTS_VOICE &&
+            (ttsConfig.speed ?? 1.0) === 1.0);
+
+        if (usesLegacyDefaultTTSConfig) {
+          state.ttsConfig = { ...DEFAULT_CONFIG.ttsConfig };
+        }
       }
 
       return state as any;
