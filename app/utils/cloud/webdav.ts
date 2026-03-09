@@ -1,3 +1,8 @@
+import {
+  SyncConflictError,
+  SyncTransportError,
+  SyncWriteInput,
+} from "./index";
 import { STORAGE_KEY } from "@/app/constant";
 import { SyncStore } from "@/app/store/sync";
 
@@ -42,21 +47,54 @@ export function createWebDavClient(store: SyncStore) {
 
       console.log("[WebDav] get key = ", key, res.status, res.statusText);
 
-      if (404 == res.status) {
-        return "";
+      if (res.status === 404) {
+        return {
+          body: "",
+          revision: null,
+        };
       }
 
-      return await res.text();
+      if (!res.ok) {
+        throw new SyncTransportError(
+          `Failed to read WebDAV backup: ${res.status}`,
+        );
+      }
+
+      return {
+        body: await res.text(),
+        revision: res.headers.get("etag"),
+      };
     },
 
-    async set(key: string, value: string) {
+    async set(key: string, value: SyncWriteInput) {
+      const headers = this.headers();
+
+      headers["content-type"] = "application/json";
+      if (value.expectedRevision) {
+        headers["if-match"] = value.expectedRevision;
+      } else {
+        headers["if-none-match"] = "*";
+      }
+
       const res = await fetch(this.path(fileName, proxyUrl), {
         method: "PUT",
-        headers: this.headers(),
-        body: value,
+        headers,
+        body: value.body,
       });
 
       console.log("[WebDav] set key = ", key, res.status, res.statusText);
+
+      if (res.status === 412) {
+        throw new SyncConflictError("Remote WebDAV backup changed");
+      }
+
+      if (!res.ok) {
+        throw new SyncTransportError(
+          `Failed to write WebDAV backup: ${res.status}`,
+        );
+      }
+
+      return res.headers.get("etag");
     },
 
     async clear(key: string) {
@@ -66,7 +104,7 @@ export function createWebDavClient(store: SyncStore) {
       });
 
       if (!res.ok && res.status !== 404) {
-        throw new Error(`Failed to clear WebDAV backup: ${res.status}`);
+        throw new SyncTransportError(`Failed to clear WebDAV backup: ${res.status}`);
       }
 
       console.log("[WebDav] clear key = ", key, res.status, res.statusText);
@@ -77,7 +115,7 @@ export function createWebDavClient(store: SyncStore) {
 
       return {
         authorization: `Basic ${auth}`,
-      };
+      } as Record<string, string>;
     },
     path(path: string, proxyUrl: string = "", proxyMethod: string = "") {
       if (path.startsWith("/")) {
@@ -92,8 +130,7 @@ export function createWebDavClient(store: SyncStore) {
       const pathPrefix = "/api/webdav/";
 
       try {
-        let u = new URL(proxyUrl + pathPrefix + path);
-        // add query params
+        const u = new URL(proxyUrl + pathPrefix + path);
         u.searchParams.append("endpoint", config.endpoint);
         proxyMethod && u.searchParams.append("proxy_method", proxyMethod);
         url = u.toString();

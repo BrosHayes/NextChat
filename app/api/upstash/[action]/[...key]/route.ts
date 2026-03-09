@@ -42,7 +42,15 @@ async function handle(
     );
   }
 
-  const targetUrl = `${endpoint}/${params.action}/${params.key.join("/")}`;
+  const passthroughParams = new URLSearchParams();
+  requestUrl.searchParams.forEach((value, key) => {
+    if (key !== "endpoint") {
+      passthroughParams.append(key, value);
+    }
+  });
+  const targetUrl = `${endpoint}/${params.action}/${params.key.join("/")}${
+    passthroughParams.size > 0 ? `?${passthroughParams.toString()}` : ""
+  }`;
 
   const method = req.method;
   const shouldNotHaveBody = ["get", "head"].includes(

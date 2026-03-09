@@ -29,7 +29,7 @@ export class ErrorBoundary extends React.Component<any, IErrorBoundaryState> {
 
   clearAndSaveData() {
     try {
-      useSyncStore.getState().export();
+      void useSyncStore.getState().export();
     } finally {
       useChatStore.getState().clearAllData();
     }

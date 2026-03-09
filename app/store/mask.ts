@@ -9,6 +9,7 @@ import { createPersistStore } from "../utils/store";
 export type Mask = {
   id: string;
   createdAt: number;
+  updatedAt: number;
   avatar: string;
   name: string;
   hideContext?: boolean;
@@ -43,6 +44,7 @@ export const createEmptyMask = () =>
     lang: getLang(),
     builtin: false,
     createdAt: Date.now(),
+    updatedAt: Date.now(),
     plugin: [],
   }) as Mask;
 
@@ -58,6 +60,7 @@ export const useMaskStore = createPersistStore(
         ...mask,
         id,
         builtin: false,
+        updatedAt: Date.now(),
       };
 
       set(() => ({ masks }));
@@ -71,6 +74,7 @@ export const useMaskStore = createPersistStore(
       if (!mask) return;
       const updateMask = { ...mask };
       updater(updateMask);
+      updateMask.updatedAt = Date.now();
       masks[id] = updateMask;
       set(() => ({ masks }));
       get().markUpdate();
@@ -114,7 +118,7 @@ export const useMaskStore = createPersistStore(
   }),
   {
     name: StoreKey.Mask,
-    version: 3.1,
+    version: 3.2,
 
     migrate(state, version) {
       const newState = JSON.parse(JSON.stringify(state)) as MaskState;
@@ -130,6 +134,12 @@ export const useMaskStore = createPersistStore(
           updatedMasks[m.id] = m;
         });
         newState.masks = updatedMasks;
+      }
+
+      if (version < 3.2) {
+        Object.values(newState.masks).forEach((m) => {
+          m.updatedAt = m.updatedAt ?? m.createdAt ?? Date.now();
+        });
       }
 
       return newState as any;

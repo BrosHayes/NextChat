@@ -225,6 +225,9 @@ const cn = {
       NotSyncYet: "还没有进行过同步",
       Success: "同步成功",
       Fail: "同步失败",
+      Conflict: "远端备份已经变化，请在两台设备都刷新后重新同步。",
+      TransportError: "备份服务拒绝了请求，或返回了无效数据。",
+      InvalidBackup: "备份文件无效、已损坏，或包含不安全内容。",
       ClearBackup: "清空备份",
       ClearBackupConfirm: "确认清空当前同步目标中的所有远端备份数据？",
       ClearSuccess: "备份已清空",
@@ -263,9 +266,15 @@ const cn = {
 
       LocalState: "本地数据",
       Overview: (overview: any) => {
-        return `${overview.chat} 次对话，${overview.message} 条消息，${overview.prompt} 条提示词，${overview.mask} 个面具`;
+        return `${overview.chat} 次对话，${overview.message} 条消息，${overview.prompt} 条提示词，${overview.mask} 个面具，${overview.plugin} 个插件，${overview.draw} 张绘图`;
       },
+      ImportSuccess: "备份已恢复",
       ImportFailed: "导入失败",
+      Warning: {
+        Title: "备份说明",
+        SubTitle:
+          "云同步和导出文件都是明文备份，包含聊天、访问配置、提示词、面具、插件、绘图记录和 MCP 配置。",
+      },
     },
     Mask: {
       Splash: {

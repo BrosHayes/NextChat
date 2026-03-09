@@ -56,6 +56,7 @@ export type ChatMessageTool = {
 
 export type ChatMessage = RequestMessage & {
   date: string;
+  createdAt: number;
   streaming?: boolean;
   isError?: boolean;
   id: string;
@@ -66,9 +67,11 @@ export type ChatMessage = RequestMessage & {
 };
 
 export function createMessage(override: Partial<ChatMessage>): ChatMessage {
+  const now = Date.now();
   return {
     id: nanoid(),
-    date: new Date().toLocaleString(),
+    date: new Date(now).toLocaleString(),
+    createdAt: now,
     role: "user",
     content: "",
     ...override,
@@ -158,8 +161,17 @@ function countMessages(msgs: ChatMessage[]) {
   );
 }
 
-function mergeDeletedSessionIds(...sessionIdLists: (string[] | undefined)[]) {
-  return Array.from(new Set(sessionIdLists.flatMap((ids) => ids ?? [])));
+export type DeletedSessionMap = Record<string, number>;
+
+function mergeDeletedSessions(
+  ...deletedSessionLists: (DeletedSessionMap | undefined)[]
+) {
+  return deletedSessionLists.reduce<DeletedSessionMap>((all, current) => {
+    Object.entries(current ?? {}).forEach(([id, deletedAt]) => {
+      all[id] = Math.max(all[id] ?? 0, deletedAt);
+    });
+    return all;
+  }, {});
 }
 
 function fillTemplateWith(input: string, modelConfig: ModelConfig) {
@@ -227,11 +239,11 @@ async function getMcpSystemPrompt(): Promise<string> {
   return MCP_SYSTEM_TEMPLATE.replace("{{ MCP_TOOLS }}", toolsStr);
 }
 
-const DEFAULT_CHAT_STATE = {
+export const DEFAULT_CHAT_STATE = {
   sessions: [createEmptySession()],
   currentSessionIndex: 0,
   lastInput: "",
-  deletedSessionIds: [] as string[],
+  deletedSessions: {} as DeletedSessionMap,
 };
 
 export const useChatStore = createPersistStore(
@@ -272,14 +284,16 @@ export const useChatStore = createPersistStore(
       },
 
       clearSessions() {
-        const deletedSessionIds = mergeDeletedSessionIds(
-          get().deletedSessionIds,
-          get().sessions.map((session) => session.id),
+        const deletedSessions = mergeDeletedSessions(
+          get().deletedSessions,
+          Object.fromEntries(
+            get().sessions.map((session) => [session.id, Date.now()]),
+          ),
         );
         set(() => ({
           sessions: [createEmptySession()],
           currentSessionIndex: 0,
-          deletedSessionIds,
+          deletedSessions,
         }));
       },
 
@@ -368,18 +382,20 @@ export const useChatStore = createPersistStore(
         const restoreState = {
           currentSessionIndex: get().currentSessionIndex,
           sessions: get().sessions.slice(),
-          deletedSessionIds: get().deletedSessionIds.slice(),
+          deletedSessions: { ...get().deletedSessions },
         };
 
-        const deletedSessionIds = mergeDeletedSessionIds(
-          get().deletedSessionIds,
-          [deletedSession.id],
+        const deletedSessions = mergeDeletedSessions(
+          get().deletedSessions,
+          {
+            [deletedSession.id]: Date.now(),
+          },
         );
 
         set(() => ({
           currentSessionIndex: nextIndex,
           sessions,
-          deletedSessionIds,
+          deletedSessions,
         }));
 
         showToast(
@@ -491,7 +507,8 @@ export const useChatStore = createPersistStore(
             botMessage.streaming = false;
             if (message) {
               botMessage.content = message;
-              botMessage.date = new Date().toLocaleString();
+              botMessage.createdAt = Date.now();
+              botMessage.date = new Date(botMessage.createdAt).toLocaleString();
               get().onNewMessage(botMessage, session);
             }
             ChatControllerPool.remove(session.id, botMessage.id);
@@ -830,6 +847,7 @@ export const useChatStore = createPersistStore(
         const index = sessions.findIndex((s) => s.id === targetSession.id);
         if (index < 0) return;
         updater(sessions[index]);
+        sessions[index].lastUpdate = Date.now();
         set(() => ({ sessions }));
       },
       async clearAllData() {
@@ -880,7 +898,7 @@ export const useChatStore = createPersistStore(
   },
   {
     name: StoreKey.Chat,
-    version: 3.4,
+    version: 3.5,
     migrate(persistedState, version) {
       const state = persistedState as any;
       const newState = JSON.parse(
@@ -948,7 +966,36 @@ export const useChatStore = createPersistStore(
       }
 
       if (version < 3.4) {
-        newState.deletedSessionIds = [];
+        newState.deletedSessions = {};
+      }
+
+      if (version < 3.5) {
+        newState.sessions.forEach((session) => {
+          session.messages = session.messages.map((message) => {
+            const parsedCreatedAt =
+              message.createdAt ??
+              (message.date ? new Date(message.date).getTime() : 0);
+            const createdAt =
+              Number.isFinite(parsedCreatedAt) && parsedCreatedAt > 0
+                ? parsedCreatedAt
+                : Date.now();
+
+            return {
+              ...message,
+              createdAt,
+              date: message.date ?? new Date(createdAt).toLocaleString(),
+            };
+          });
+        });
+
+        const deletedSessions: DeletedSessionMap = {};
+        (state.deletedSessionIds ?? []).forEach((id: string) => {
+          deletedSessions[id] = Date.now();
+        });
+        newState.deletedSessions = mergeDeletedSessions(
+          deletedSessions,
+          state.deletedSessions,
+        );
       }
 
       return newState as any;

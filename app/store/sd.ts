@@ -18,7 +18,7 @@ const defaultModel = {
 
 const defaultParams = getModelParamBasicData(models[0].params({}), {});
 
-const DEFAULT_SD_STATE = {
+export const DEFAULT_SD_STATE = {
   currentId: 0,
   draw: [],
   currentModel: defaultModel,
@@ -53,11 +53,18 @@ export const useSdStore = createPersistStore<
       getNextId() {
         const id = ++_get().currentId;
         set({ currentId: id });
+        get().markUpdate();
         return id;
       },
       sendTask(data: any, okCall?: Function) {
-        data = { ...data, id: nanoid(), status: "running" };
+        data = {
+          ...data,
+          id: nanoid(),
+          status: "running",
+          updatedAt: Date.now(),
+        };
         set({ draw: [data, ..._get().draw] });
+        get().markUpdate();
         this.getNextId();
         this.stabilityRequestCall(data);
         okCall?.();
@@ -138,19 +145,27 @@ export const useSdStore = createPersistStore<
         const draw = _get().draw || [];
         draw.some((item, index) => {
           if (item.id === _draw.id) {
-            draw[index] = _draw;
+            draw[index] = {
+              ...item,
+              ..._draw,
+              updatedAt: Date.now(),
+            };
             set(() => ({ draw }));
+            get().markUpdate();
             return true;
           }
         });
       },
       setCurrentModel(model: any) {
-        set({ currentModel: model });
+        set({ currentModel: model, currentId: _get().currentId });
+        get().markUpdate();
       },
       setCurrentParams(data: any) {
         set({
           currentParams: data,
+          currentId: _get().currentId,
         });
+        get().markUpdate();
       },
     };
 
@@ -158,6 +173,18 @@ export const useSdStore = createPersistStore<
   },
   {
     name: StoreKey.SdList,
-    version: 1.0,
+    version: 1.1,
+    migrate(state, version) {
+      const newState = JSON.parse(JSON.stringify(state)) as typeof DEFAULT_SD_STATE;
+
+      if (version < 1.1) {
+        newState.draw = (newState.draw ?? []).map((item: any) => ({
+          ...item,
+          updatedAt: item.updatedAt ?? Date.now(),
+        }));
+      }
+
+      return newState as any;
+    },
   },
 );

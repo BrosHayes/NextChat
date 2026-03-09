@@ -227,6 +227,9 @@ const en: LocaleType = {
       NotSyncYet: "Not sync yet",
       Success: "Sync Success",
       Fail: "Sync Fail",
+      Conflict: "Remote backup changed. Sync again after refreshing both devices.",
+      TransportError: "Backup service rejected the request or returned invalid data.",
+      InvalidBackup: "Backup file is invalid, corrupted, or unsafe.",
       ClearBackup: "Clear Backup",
       ClearBackupConfirm:
         "Confirm to clear all remote backup data for the current sync target?",
@@ -267,9 +270,15 @@ const en: LocaleType = {
 
       LocalState: "Local Data",
       Overview: (overview: any) => {
-        return `${overview.chat} chats，${overview.message} messages，${overview.prompt} prompts，${overview.mask} masks`;
+        return `${overview.chat} chats, ${overview.message} messages, ${overview.prompt} prompts, ${overview.mask} masks, ${overview.plugin} plugins, ${overview.draw} images`;
       },
+      ImportSuccess: "Backup restored",
       ImportFailed: "Failed to import from file",
+      Warning: {
+        Title: "Backup Notice",
+        SubTitle:
+          "Cloud sync and exported files are plain-text backups. They include chats, access settings, prompts, masks, plugins, image history, and MCP config.",
+      },
     },
     Mask: {
       Splash: {

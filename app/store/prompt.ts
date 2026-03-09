@@ -10,6 +10,7 @@ export interface Prompt {
   title: string;
   content: string;
   createdAt: number;
+  updatedAt: number;
 }
 
 export const SearchService = {
@@ -48,10 +49,14 @@ export const SearchService = {
   },
 };
 
+export const DEFAULT_PROMPT_STATE = {
+  counter: 0,
+  prompts: {} as Record<string, Prompt>,
+};
+
 export const usePromptStore = createPersistStore(
   {
-    counter: 0,
-    prompts: {} as Record<string, Prompt>,
+    ...DEFAULT_PROMPT_STATE,
   },
 
   (set, get) => ({
@@ -60,6 +65,7 @@ export const usePromptStore = createPersistStore(
       prompt.id = nanoid();
       prompt.isUser = true;
       prompt.createdAt = Date.now();
+      prompt.updatedAt = Date.now();
       prompts[prompt.id] = prompt;
 
       set(() => ({
@@ -112,10 +118,13 @@ export const usePromptStore = createPersistStore(
         title: "",
         content: "",
         id,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
       };
 
       SearchService.remove(id);
       updater(prompt);
+      prompt.updatedAt = Date.now();
       const prompts = get().prompts;
       prompts[id] = prompt;
       set(() => ({ prompts }));
@@ -132,7 +141,7 @@ export const usePromptStore = createPersistStore(
   }),
   {
     name: StoreKey.Prompt,
-    version: 3,
+    version: 4,
 
     migrate(state, version) {
       const newState = JSON.parse(JSON.stringify(state)) as {
@@ -141,6 +150,12 @@ export const usePromptStore = createPersistStore(
 
       if (version < 3) {
         Object.values(newState.prompts).forEach((p) => (p.id = nanoid()));
+      }
+
+      if (version < 4) {
+        Object.values(newState.prompts).forEach((p) => {
+          p.updatedAt = p.updatedAt ?? p.createdAt ?? Date.now();
+        });
       }
 
       return newState as any;
@@ -171,6 +186,7 @@ export const usePromptStore = createPersistStore(
                   title,
                   content,
                   createdAt: Date.now(),
+                  updatedAt: Date.now(),
                 }) as Prompt,
             );
           });

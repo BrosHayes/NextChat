@@ -1,13 +1,39 @@
+function isSafeKey(key: string) {
+  return key !== "__proto__" && key !== "constructor" && key !== "prototype";
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    Object.getPrototypeOf(value) === Object.prototype
+  );
+}
+
 export function merge(target: any, source: any) {
-  Object.keys(source).forEach(function (key) {
-    if (
-      source.hasOwnProperty(key) && // Check if the property is not inherited
-      source[key] &&
-      typeof source[key] === "object" || key === "__proto__" || key === "constructor"
-    ) {
-      merge((target[key] = target[key] || {}), source[key]);
+  if (!isPlainObject(source) || !isPlainObject(target)) {
+    return;
+  }
+
+  Object.keys(source).forEach((key) => {
+    if (!Object.prototype.hasOwnProperty.call(source, key) || !isSafeKey(key)) {
       return;
     }
-    target[key] = source[key];
+
+    const sourceValue = source[key];
+    if (Array.isArray(sourceValue)) {
+      target[key] = sourceValue.slice();
+      return;
+    }
+
+    if (isPlainObject(sourceValue)) {
+      const nextTarget = isPlainObject(target[key]) ? target[key] : {};
+      target[key] = nextTarget;
+      merge(nextTarget, sourceValue);
+      return;
+    }
+
+    target[key] = sourceValue;
   });
-} 
+}

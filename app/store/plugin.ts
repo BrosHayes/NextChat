@@ -12,6 +12,7 @@ const isApp = getClientConfig()?.isApp !== false;
 export type Plugin = {
   id: string;
   createdAt: number;
+  updatedAt: number;
   title: string;
   version: string;
   content: string;
@@ -163,6 +164,7 @@ export const createEmptyPlugin = () =>
     content: "",
     builtin: false,
     createdAt: Date.now(),
+    updatedAt: Date.now(),
   }) as Plugin;
 
 export const DEFAULT_PLUGIN_STATE = {
@@ -181,6 +183,7 @@ export const usePluginStore = createPersistStore(
         ...plugin,
         id,
         builtin: false,
+        updatedAt: Date.now(),
       };
 
       set(() => ({ plugins }));
@@ -194,6 +197,7 @@ export const usePluginStore = createPersistStore(
       if (!plugin) return;
       const updatePlugin = { ...plugin };
       updater(updatePlugin);
+      updatePlugin.updatedAt = Date.now();
       plugins[id] = updatePlugin;
       FunctionToolService.add(updatePlugin, true);
       set(() => ({ plugins }));
@@ -229,7 +233,18 @@ export const usePluginStore = createPersistStore(
   }),
   {
     name: StoreKey.Plugin,
-    version: 1,
+    version: 2,
+    migrate(state, version) {
+      const newState = JSON.parse(JSON.stringify(state)) as typeof DEFAULT_PLUGIN_STATE;
+
+      if (version < 2) {
+        Object.values(newState.plugins).forEach((plugin) => {
+          plugin.updatedAt = plugin.updatedAt ?? plugin.createdAt ?? Date.now();
+        });
+      }
+
+      return newState as any;
+    },
     onRehydrateStorage(state) {
       // Skip store rehydration on server side
       if (typeof window === "undefined") {

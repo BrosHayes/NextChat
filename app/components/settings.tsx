@@ -41,6 +41,7 @@ import {
   useUpdateStore,
   useAccessStore,
   useAppConfig,
+  usePluginStore,
 } from "../store";
 import Locale, {
   AllLangs,
@@ -88,6 +89,7 @@ import { getClientConfig } from "../config/client";
 import { useSyncStore } from "../store/sync";
 import { nanoid } from "nanoid";
 import { useMaskStore } from "../store/mask";
+import { useSdStore } from "../store/sd";
 import { ProviderType } from "../utils/cloud";
 import { TTSConfigList } from "./tts-config";
 import { RealtimeConfigList } from "./realtime-chat/realtime-config";
@@ -493,6 +495,8 @@ function SyncItems() {
   const chatStore = useChatStore();
   const promptStore = usePromptStore();
   const maskStore = useMaskStore();
+  const pluginStore = usePluginStore();
+  const sdStore = useSdStore();
   const couldSync = useMemo(() => {
     return syncStore.cloudSync();
   }, [syncStore]);
@@ -508,8 +512,16 @@ function SyncItems() {
       message: messageCount,
       prompt: Object.keys(promptStore.prompts).length,
       mask: Object.keys(maskStore.masks).length,
+      plugin: Object.keys(pluginStore.plugins).length,
+      draw: sdStore.draw.length,
     };
-  }, [chatStore.sessions, maskStore.masks, promptStore.prompts]);
+  }, [
+    chatStore.sessions,
+    maskStore.masks,
+    pluginStore.plugins,
+    promptStore.prompts,
+    sdStore.draw,
+  ]);
 
   return (
     <>
@@ -553,7 +565,12 @@ function SyncItems() {
                     await syncStore.clearBackup();
                     showToast(Locale.Settings.Sync.ClearSuccess);
                   } catch (e) {
-                    showToast(Locale.Settings.Sync.ClearFail);
+                    showToast(
+                      syncStore.getErrorMessage(
+                        e,
+                        Locale.Settings.Sync.ClearFail,
+                      ),
+                    );
                     console.error("[Sync] clear backup failed", e);
                   }
                 }}
@@ -568,7 +585,7 @@ function SyncItems() {
                     await syncStore.sync();
                     showToast(Locale.Settings.Sync.Success);
                   } catch (e) {
-                    showToast(Locale.Settings.Sync.Fail);
+                    showToast(syncStore.getErrorMessage(e));
                     console.error("[Sync]", e);
                   }
                 }}
@@ -587,7 +604,7 @@ function SyncItems() {
               icon={<UploadIcon />}
               text={Locale.UI.Export}
               onClick={() => {
-                syncStore.export();
+                void syncStore.export();
               }}
             />
             <IconButton
@@ -595,11 +612,15 @@ function SyncItems() {
               icon={<DownloadIcon />}
               text={Locale.UI.Import}
               onClick={() => {
-                syncStore.import();
+                void syncStore.import();
               }}
             />
           </div>
         </ListItem>
+        <ListItem
+          title={Locale.Settings.Sync.Warning.Title}
+          subTitle={Locale.Settings.Sync.Warning.SubTitle}
+        />
       </List>
 
       {showSyncConfigModal && (

@@ -19,9 +19,34 @@ type SyncClientConfig = {
     : never;
 };
 
+export class SyncConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SyncConflictError";
+  }
+}
+
+export class SyncTransportError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SyncTransportError";
+  }
+}
+
+export type SyncReadResult = {
+  body: string;
+  revision: string | null;
+};
+
+export type SyncWriteInput = {
+  body: string;
+  expectedRevision?: string | null;
+  nextRevision?: string;
+};
+
 export type SyncClient = {
-  get: (key: string) => Promise<string>;
-  set: (key: string, value: string) => Promise<void>;
+  get: (key: string) => Promise<SyncReadResult>;
+  set: (key: string, value: SyncWriteInput) => Promise<string | null>;
   clear: (key: string) => Promise<void>;
   check: () => Promise<boolean>;
 };

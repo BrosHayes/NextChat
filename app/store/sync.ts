@@ -2,17 +2,23 @@ import { getClientConfig } from "../config/client";
 import { ApiPath, RUNTIME_CONFIG_DOM, STORAGE_KEY, StoreKey } from "../constant";
 import { createPersistStore } from "../utils/store";
 import {
-  AppState,
+  BackupValidationError,
+  createBackupEnvelope,
   getLocalAppState,
-  getSyncAppState,
   GetStoreState,
   mergeAppState,
+  parseBackupContent,
   setLocalAppState,
 } from "../utils/sync";
 import { downloadAs, readFromFile } from "../utils";
 import { showToast } from "../components/ui-lib";
 import Locale from "../locales";
-import { createSyncClient, ProviderType } from "../utils/cloud";
+import {
+  createSyncClient,
+  ProviderType,
+  SyncConflictError,
+  SyncTransportError,
+} from "../utils/cloud";
 
 export interface WebDavConfig {
   endpoint: string;
@@ -87,8 +93,25 @@ export const useSyncStore = createPersistStore(
       set({ lastSyncTime: 0, lastProvider: "" });
     },
 
-    export() {
-      const state = getLocalAppState();
+    getErrorMessage(error: unknown, fallback: string = Locale.Settings.Sync.Fail) {
+      if (error instanceof BackupValidationError) {
+        return Locale.Settings.Sync.InvalidBackup;
+      }
+
+      if (error instanceof SyncConflictError) {
+        return Locale.Settings.Sync.Conflict;
+      }
+
+      if (error instanceof SyncTransportError) {
+        return Locale.Settings.Sync.TransportError;
+      }
+
+      return fallback;
+    },
+
+    async export() {
+      const state = await getLocalAppState();
+      const { content } = createBackupEnvelope(state);
       const datePart = isApp
         ? `${new Date().toLocaleDateString().replace(/\//g, "_")} ${new Date()
             .toLocaleTimeString()
@@ -96,60 +119,56 @@ export const useSyncStore = createPersistStore(
         : new Date().toLocaleString();
 
       const fileName = `Backup-${datePart}.json`;
-      downloadAs(JSON.stringify(state), fileName);
+      downloadAs(content, fileName);
     },
 
     async import() {
-      const rawContent = await readFromFile();
-
       try {
-        const remoteState = JSON.parse(rawContent) as AppState;
-        const localState = getLocalAppState();
-        mergeAppState(localState, remoteState);
-        setLocalAppState(localState);
-        location.reload();
-      } catch (e) {
-        console.error("[Import]", e);
-        showToast(Locale.Settings.Sync.ImportFailed);
+        const rawContent = await readFromFile();
+        const remoteState = parseBackupContent(rawContent);
+        await setLocalAppState(remoteState.payload);
+        showToast(Locale.Settings.Sync.ImportSuccess);
+      } catch (error) {
+        console.error("[Import]", error);
+        showToast(
+          this.getErrorMessage(error, Locale.Settings.Sync.ImportFailed),
+        );
       }
     },
 
     getClient() {
       const provider = get().provider;
-      const client = createSyncClient(provider, get());
-      return client;
+      return createSyncClient(provider, get());
     },
 
     async sync() {
-      const localState = getLocalAppState();
+      const localState = await getLocalAppState();
       const provider = get().provider;
       const config = get()[provider];
       const client = this.getClient();
+      const remoteState = await client.get(config.username);
 
-      try {
-        const remoteState = await client.get(config.username);
-        if (!remoteState || remoteState === "") {
-          const syncState = getSyncAppState(localState);
-          await client.set(config.username, JSON.stringify(syncState));
-          this.markSyncTime();
-          console.log(
-            "[Sync] Remote state is empty, using local state instead.",
-          );
-          return;
-        } else {
-          const parsedRemoteState = JSON.parse(
-            await client.get(config.username),
-          ) as AppState;
-          mergeAppState(localState, parsedRemoteState);
-          setLocalAppState(localState);
-        }
-      } catch (e) {
-        console.log("[Sync] failed to get remote state", e);
-        throw e;
+      if (remoteState.body.trim().length === 0) {
+        const { envelope, content } = createBackupEnvelope(localState);
+        await client.set(config.username, {
+          body: content,
+          expectedRevision: remoteState.revision,
+          nextRevision: envelope.revision,
+        });
+        this.markSyncTime();
+        return;
       }
 
-      const syncState = getSyncAppState(localState);
-      await client.set(config.username, JSON.stringify(syncState));
+      const parsedRemoteState = parseBackupContent(remoteState.body);
+      const mergedState = mergeAppState(localState, parsedRemoteState.payload);
+      const { envelope, content } = createBackupEnvelope(mergedState);
+
+      await client.set(config.username, {
+        body: content,
+        expectedRevision: remoteState.revision,
+        nextRevision: envelope.revision,
+      });
+      await setLocalAppState(mergedState);
 
       this.markSyncTime();
     },

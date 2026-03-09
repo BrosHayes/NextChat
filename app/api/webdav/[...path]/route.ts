@@ -129,6 +129,9 @@ async function handle(
   const fetchOptions: RequestInit = {
     headers: {
       authorization: req.headers.get("authorization") ?? "",
+      "if-match": req.headers.get("if-match") ?? "",
+      "if-none-match": req.headers.get("if-none-match") ?? "",
+      "content-type": req.headers.get("content-type") ?? "",
     },
     body: shouldNotHaveBody ? null : req.body,
     redirect: "manual",

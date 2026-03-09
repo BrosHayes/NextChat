@@ -362,12 +362,36 @@ export async function getMcpConfigFromFile(): Promise<McpConfigData> {
   }
 }
 
+export async function getMcpBackupState() {
+  const config = await getMcpConfigFromFile();
+
+  try {
+    const stat = await fs.stat(CONFIG_PATH);
+    return {
+      config,
+      updatedAt: stat.mtimeMs,
+    };
+  } catch {
+    return {
+      config,
+      updatedAt: 0,
+    };
+  }
+}
+
 // 更新 MCP 配置文件
-async function updateMcpConfig(config: McpConfigData): Promise<void> {
+export async function updateMcpConfig(
+  config: McpConfigData,
+  updatedAt?: number,
+): Promise<void> {
   try {
     // 确保目录存在
     await fs.mkdir(path.dirname(CONFIG_PATH), { recursive: true });
     await fs.writeFile(CONFIG_PATH, JSON.stringify(config, null, 2));
+    if (updatedAt && Number.isFinite(updatedAt) && updatedAt > 0) {
+      const updatedTime = new Date(updatedAt);
+      await fs.utimes(CONFIG_PATH, updatedTime, updatedTime);
+    }
   } catch (error) {
     throw error;
   }
