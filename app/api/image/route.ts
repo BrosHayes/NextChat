@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export const runtime = "edge";
+
 const IMAGE_EXTENSION_REGEX =
   /\.(avif|bmp|gif|heic|heif|ico|jpe?g|jfif|pjpeg|pjp|png|svg|webp)$/i;
 
