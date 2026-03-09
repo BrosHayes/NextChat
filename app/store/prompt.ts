@@ -60,19 +60,26 @@ export const usePromptStore = createPersistStore(
   },
 
   (set, get) => ({
-    add(prompt: Prompt) {
+    add(prompt: Partial<Prompt>) {
       const prompts = get().prompts;
-      prompt.id = nanoid();
-      prompt.isUser = true;
-      prompt.createdAt = Date.now();
-      prompt.updatedAt = Date.now();
-      prompts[prompt.id] = prompt;
+      const now = Date.now();
+      const nextPrompt: Prompt = {
+        id: prompt.id ?? nanoid(),
+        isUser: prompt.isUser ?? true,
+        title: prompt.title ?? "",
+        content: prompt.content ?? "",
+        createdAt: prompt.createdAt ?? now,
+        updatedAt: prompt.updatedAt ?? now,
+      };
+      prompts[nextPrompt.id] = nextPrompt;
 
       set(() => ({
         prompts: prompts,
       }));
 
-      return prompt.id!;
+      SearchService.add(nextPrompt);
+
+      return nextPrompt.id;
     },
 
     get(id: string) {

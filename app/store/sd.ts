@@ -20,7 +20,7 @@ const defaultParams = getModelParamBasicData(models[0].params({}), {});
 
 export const DEFAULT_SD_STATE = {
   currentId: 0,
-  draw: [],
+  draw: [] as any[],
   currentModel: defaultModel,
   currentParams: defaultParams,
 };
@@ -175,7 +175,9 @@ export const useSdStore = createPersistStore<
     name: StoreKey.SdList,
     version: 1.1,
     migrate(state, version) {
-      const newState = JSON.parse(JSON.stringify(state)) as typeof DEFAULT_SD_STATE;
+      const newState = JSON.parse(
+        JSON.stringify(state),
+      ) as typeof DEFAULT_SD_STATE;
 
       if (version < 1.1) {
         newState.draw = (newState.draw ?? []).map((item: any) => ({

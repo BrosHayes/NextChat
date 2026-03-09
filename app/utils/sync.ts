@@ -219,8 +219,6 @@ function normalizeMessage(message: Partial<ChatMessage>) {
 
   return {
     id: message.id ?? nanoid(),
-    createdAt,
-    date: message.date ?? formatMessageDate(createdAt),
     role: message.role ?? "user",
     content: message.content ?? "",
     ...message,
@@ -247,7 +245,9 @@ function normalizeMask(mask: Partial<Mask> | undefined): Mask {
 
 function normalizeChatSession(session: Partial<ChatSession>): ChatSession {
   const messages = Array.isArray(session.messages)
-    ? session.messages.map(normalizeMessage).sort((a, b) => a.createdAt - b.createdAt)
+    ? session.messages
+        .map(normalizeMessage)
+        .sort((a, b) => a.createdAt - b.createdAt)
     : [];
   const latestMessageAt = messages.at(-1)?.createdAt ?? Date.now();
   const lastUpdate = normalizeTimestamp(session.lastUpdate, latestMessageAt);
@@ -396,8 +396,9 @@ function normalizeMcpState(state: Partial<McpBackupState> | undefined) {
 }
 
 function normalizeChatState(state: Partial<ChatBackupState> | undefined) {
-  const normalizedSessions = Array.isArray(state?.sessions)
-    ? state.sessions.map(normalizeChatSession)
+  const sessions = state?.sessions;
+  const normalizedSessions = Array.isArray(sessions)
+    ? sessions.map(normalizeChatSession)
     : deepCopy(DEFAULT_CHAT_STATE.sessions).map(normalizeChatSession);
 
   return {
@@ -423,7 +424,9 @@ function normalizeBackupPayload(value: Partial<BackupPayload> | undefined) {
 
 function assertSafeJsonValue(value: unknown, path = "root") {
   if (Array.isArray(value)) {
-    value.forEach((item, index) => assertSafeJsonValue(item, `${path}[${index}]`));
+    value.forEach((item, index) =>
+      assertSafeJsonValue(item, `${path}[${index}]`),
+    );
     return;
   }
 
@@ -450,7 +453,9 @@ function isBackupEnvelopeV2(value: unknown): value is BackupEnvelopeV2 {
   );
 }
 
-function looksLikeLegacyAppState(value: unknown) {
+function looksLikeLegacyAppState(
+  value: unknown,
+): value is Record<string, unknown> {
   return (
     isRecord(value) &&
     (StoreKey.Chat in value ||
@@ -486,11 +491,14 @@ function getMessageScore(message: ChatMessage) {
   return (
     contentLength +
     (message.streaming ? 0 : 10_000) +
-    ((message.tools?.length ?? 0) * 100)
+    (message.tools?.length ?? 0) * 100
   );
 }
 
-function mergeMessages(localMessages: ChatMessage[], remoteMessages: ChatMessage[]) {
+function mergeMessages(
+  localMessages: ChatMessage[],
+  remoteMessages: ChatMessage[],
+) {
   const merged = new Map<string, ChatMessage>();
 
   [...localMessages, ...remoteMessages].forEach((rawMessage) => {
@@ -525,7 +533,10 @@ function mergeDeletedSessions(...deletedSessionsList: DeletedSessionMap[]) {
   }, {});
 }
 
-function mergeChatState(localState: ChatBackupState, remoteState: ChatBackupState) {
+function mergeChatState(
+  localState: ChatBackupState,
+  remoteState: ChatBackupState,
+) {
   const local = normalizeChatState(localState);
   const remote = normalizeChatState(remoteState);
   const deletedSessions = mergeDeletedSessions(
@@ -551,8 +562,11 @@ function mergeChatState(localState: ChatBackupState, remoteState: ChatBackupStat
       return;
     }
 
-    const remoteNewer = normalizedRemoteSession.lastUpdate > localSession.lastUpdate;
-    const preferredSession = remoteNewer ? normalizedRemoteSession : localSession;
+    const remoteNewer =
+      normalizedRemoteSession.lastUpdate > localSession.lastUpdate;
+    const preferredSession = remoteNewer
+      ? normalizedRemoteSession
+      : localSession;
     const mergedMessages = mergeMessages(
       localSession.messages,
       normalizedRemoteSession.messages,
@@ -588,13 +602,15 @@ function mergeRecordByUpdatedAt<T extends { id: string; updatedAt?: number }>(
 ) {
   const merged = new Map<string, T>();
 
-  [...Object.values(localState), ...Object.values(remoteState)].forEach((item) => {
-    const existing = merged.get(item.id);
+  [...Object.values(localState), ...Object.values(remoteState)].forEach(
+    (item) => {
+      const existing = merged.get(item.id);
 
-    if (!existing || (item.updatedAt ?? 0) >= (existing.updatedAt ?? 0)) {
-      merged.set(item.id, item);
-    }
-  });
+      if (!existing || (item.updatedAt ?? 0) >= (existing.updatedAt ?? 0)) {
+        merged.set(item.id, item);
+      }
+    },
+  );
 
   return Object.fromEntries(
     Array.from(merged.values()).map((item) => [item.id, item]),
@@ -616,11 +632,17 @@ function mergePromptState(
     ...base,
     counter: Math.max(local.counter, remote.counter),
     prompts: mergeRecordByUpdatedAt(local.prompts, remote.prompts),
-    lastUpdateTime: Math.max(local.lastUpdateTime ?? 0, remote.lastUpdateTime ?? 0),
+    lastUpdateTime: Math.max(
+      local.lastUpdateTime ?? 0,
+      remote.lastUpdateTime ?? 0,
+    ),
   } satisfies PromptBackupState;
 }
 
-function mergeMaskState(localState: MaskBackupState, remoteState: MaskBackupState) {
+function mergeMaskState(
+  localState: MaskBackupState,
+  remoteState: MaskBackupState,
+) {
   const local = normalizeMaskState(localState);
   const remote = normalizeMaskState(remoteState);
   const base = mergeWithUpdate(
@@ -631,7 +653,10 @@ function mergeMaskState(localState: MaskBackupState, remoteState: MaskBackupStat
   return {
     ...base,
     masks: mergeRecordByUpdatedAt(local.masks, remote.masks),
-    lastUpdateTime: Math.max(local.lastUpdateTime ?? 0, remote.lastUpdateTime ?? 0),
+    lastUpdateTime: Math.max(
+      local.lastUpdateTime ?? 0,
+      remote.lastUpdateTime ?? 0,
+    ),
   } satisfies MaskBackupState;
 }
 
@@ -645,7 +670,10 @@ function mergePluginState(
   return {
     ...mergeWithUpdate({ ...local, plugins: {} }, { ...remote, plugins: {} }),
     plugins: mergeRecordByUpdatedAt(local.plugins, remote.plugins),
-    lastUpdateTime: Math.max(local.lastUpdateTime ?? 0, remote.lastUpdateTime ?? 0),
+    lastUpdateTime: Math.max(
+      local.lastUpdateTime ?? 0,
+      remote.lastUpdateTime ?? 0,
+    ),
   } satisfies PluginBackupState;
 }
 
@@ -669,11 +697,17 @@ function mergeSdState(localState: SdBackupState, remoteState: SdBackupState) {
     draw: Array.from(drawById.values()).sort(
       (a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0),
     ),
-    lastUpdateTime: Math.max(local.lastUpdateTime ?? 0, remote.lastUpdateTime ?? 0),
+    lastUpdateTime: Math.max(
+      local.lastUpdateTime ?? 0,
+      remote.lastUpdateTime ?? 0,
+    ),
   } satisfies SdBackupState;
 }
 
-function mergeMcpState(localState: McpBackupState, remoteState: McpBackupState) {
+function mergeMcpState(
+  localState: McpBackupState,
+  remoteState: McpBackupState,
+) {
   const local = normalizeMcpState(localState);
   const remote = normalizeMcpState(remoteState);
 
@@ -815,7 +849,10 @@ export async function setLocalAppState(appState: BackupPayload) {
   await setMcpBackupState(normalized.mcp);
 }
 
-export function mergeAppState(localState: BackupPayload, remoteState: BackupPayload) {
+export function mergeAppState(
+  localState: BackupPayload,
+  remoteState: BackupPayload,
+) {
   const local = normalizeBackupPayload(localState);
   const remote = normalizeBackupPayload(remoteState);
 

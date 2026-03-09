@@ -64,7 +64,6 @@ function normalizeBuiltinContext(mask: {
       role: message.role ?? "system",
       content: message.content ?? "",
       date: message.date ?? "",
-      createdAt,
       ...message,
       createdAt,
     } as ChatMessage;
