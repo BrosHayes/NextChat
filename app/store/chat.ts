@@ -385,12 +385,9 @@ export const useChatStore = createPersistStore(
           deletedSessions: { ...get().deletedSessions },
         };
 
-        const deletedSessions = mergeDeletedSessions(
-          get().deletedSessions,
-          {
-            [deletedSession.id]: Date.now(),
-          },
-        );
+        const deletedSessions = mergeDeletedSessions(get().deletedSessions, {
+          [deletedSession.id]: Date.now(),
+        });
 
         set(() => ({
           currentSessionIndex: nextIndex,
@@ -565,11 +562,11 @@ export const useChatStore = createPersistStore(
         const session = get().currentSession();
 
         if (session.memoryPrompt.length) {
-          return {
+          return createMessage({
             role: "system",
             content: Locale.Store.Prompt.History(session.memoryPrompt),
             date: "",
-          } as ChatMessage;
+          });
         }
       },
 

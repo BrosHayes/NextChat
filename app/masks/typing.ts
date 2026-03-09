@@ -1,7 +1,8 @@
-import { ModelConfig } from "../store";
+import { ChatMessage, ModelConfig } from "../store";
 import { type Mask } from "../store/mask";
 
-export type BuiltinMask = Omit<Mask, "id" | "modelConfig"> & {
+export type BuiltinMask = Omit<Mask, "id" | "modelConfig" | "context"> & {
   builtin: Boolean;
   modelConfig: Partial<ModelConfig>;
+  context: Array<Partial<ChatMessage>>;
 };

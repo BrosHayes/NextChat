@@ -284,6 +284,7 @@ export function RenderExport(props: {
         role: role as any,
         content: role === "user" ? v.textContent ?? "" : v.innerHTML,
         date: "",
+        createdAt: props.messages[i]?.createdAt ?? Date.now() + i,
       };
     });
 
@@ -531,9 +532,7 @@ export function ImagePreviewer(props: {
 
           <div>
             <div className={styles["main-title"]}>NextChat</div>
-            <div className={styles["sub-title"]}>
-              {repoLabel}
-            </div>
+            <div className={styles["sub-title"]}>{repoLabel}</div>
             <div className={styles["icons"]}>
               <MaskAvatar avatar={config.avatar} />
               <span className={styles["icon-space"]}>&</span>
@@ -631,9 +630,7 @@ export function MarkdownPreviewer(props: {
       .map((m) => {
         return m.role === "user"
           ? `## ${Locale.Export.MessageFromYou}:\n${getMessageTextContent(m)}`
-          : `## ${ASSISTANT_EXPORT_LABEL}:\n${getMessageTextContent(
-              m,
-            ).trim()}`;
+          : `## ${ASSISTANT_EXPORT_LABEL}:\n${getMessageTextContent(m).trim()}`;
       })
       .join("\n\n");
 

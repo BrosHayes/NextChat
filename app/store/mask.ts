@@ -48,6 +48,29 @@ export const createEmptyMask = () =>
     plugin: [],
   }) as Mask;
 
+function normalizeBuiltinContext(mask: {
+  createdAt: number;
+  context?: Array<Partial<ChatMessage>>;
+}) {
+  return (mask.context ?? []).map((message, index) => {
+    const createdAt =
+      typeof message.createdAt === "number" &&
+      Number.isFinite(message.createdAt)
+        ? message.createdAt
+        : mask.createdAt + index;
+
+    return {
+      id: message.id ?? nanoid(),
+      role: message.role ?? "system",
+      content: message.content ?? "",
+      date: message.date ?? "",
+      createdAt,
+      ...message,
+      createdAt,
+    } as ChatMessage;
+  });
+}
+
 export const useMaskStore = createPersistStore(
   { ...DEFAULT_MASK_STATE },
 
@@ -99,6 +122,7 @@ export const useMaskStore = createPersistStore(
         (m) =>
           ({
             ...m,
+            context: normalizeBuiltinContext(m),
             modelConfig: {
               ...config.modelConfig,
               ...m.modelConfig,
