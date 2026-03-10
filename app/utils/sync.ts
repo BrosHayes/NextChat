@@ -32,9 +32,11 @@ import {
 import { DEFAULT_SD_STATE, useSdStore } from "../store/sd";
 import { DEFAULT_MCP_CONFIG, McpConfigData } from "../mcp/types";
 import { merge } from "./merge";
+import { safeLocalStorage } from "../utils";
 
 const BACKUP_SCHEMA_VERSION = 2 as const;
 const MCP_CONFIG_API_PATH = "/api/mcp/config";
+const MCP_LOCAL_STORAGE_KEY = `${StoreKey.Mcp}-backup`;
 const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
 type NonFunctionKeys<T> = {
@@ -128,6 +130,10 @@ function deepCopy<T>(value: T): T {
   }
 
   return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function getMcpStorage() {
+  return safeLocalStorage();
 }
 
 function isRecord(value: unknown): value is Record<string, any> {
@@ -393,6 +399,37 @@ function normalizeMcpState(state: Partial<McpBackupState> | undefined) {
         : deepCopy(DEFAULT_MCP_CONFIG),
     updatedAt: normalizeTimestamp(state?.updatedAt, 0),
   };
+}
+
+function readMcpBackupStateFromStorage() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const raw = getMcpStorage().getItem(MCP_LOCAL_STORAGE_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    assertSafeJsonValue(parsed);
+    return normalizeMcpState(parsed as Partial<McpBackupState>);
+  } catch (error) {
+    console.warn("[Sync] failed to parse local MCP backup state", error);
+    return null;
+  }
+}
+
+function writeMcpBackupStateToStorage(state: McpBackupState) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  getMcpStorage().setItem(
+    MCP_LOCAL_STORAGE_KEY,
+    JSON.stringify(normalizeMcpState(state)),
+  );
 }
 
 function normalizeChatState(state: Partial<ChatBackupState> | undefined) {
@@ -715,6 +752,11 @@ function mergeMcpState(
 }
 
 async function getMcpBackupState() {
+  const localState = readMcpBackupStateFromStorage();
+  if (localState) {
+    return localState;
+  }
+
   try {
     const res = await fetch(MCP_CONFIG_API_PATH, {
       method: "GET",
@@ -734,6 +776,11 @@ async function getMcpBackupState() {
 
 async function setMcpBackupState(state: McpBackupState) {
   const normalizedState = normalizeMcpState(state);
+  writeMcpBackupStateToStorage(normalizedState);
+
+  if (typeof window !== "undefined") {
+    return;
+  }
 
   try {
     const res = await fetch(MCP_CONFIG_API_PATH, {

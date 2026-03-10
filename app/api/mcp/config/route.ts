@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  getMcpBackupState,
-  restartAllClients,
-  updateMcpConfig,
-} from "@/app/mcp/actions";
-import { McpConfigData } from "@/app/mcp/types";
+import { DEFAULT_MCP_CONFIG, McpConfigData } from "@/app/mcp/types";
+
+const EDGE_MCP_STATE_KEY = "__NEXTCHAT_EDGE_MCP_CONFIG__";
+
+type EdgeMcpState = {
+  config: McpConfigData;
+  updatedAt: number;
+};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -14,8 +16,29 @@ function isMcpConfigData(value: unknown): value is McpConfigData {
   return isRecord(value) && isRecord(value.mcpServers);
 }
 
+function getEdgeState(): EdgeMcpState {
+  const globalState = globalThis as typeof globalThis & {
+    [EDGE_MCP_STATE_KEY]?: EdgeMcpState;
+  };
+
+  return (
+    globalState[EDGE_MCP_STATE_KEY] ?? {
+      config: DEFAULT_MCP_CONFIG,
+      updatedAt: 0,
+    }
+  );
+}
+
+function setEdgeState(state: EdgeMcpState) {
+  const globalState = globalThis as typeof globalThis & {
+    [EDGE_MCP_STATE_KEY]?: EdgeMcpState;
+  };
+
+  globalState[EDGE_MCP_STATE_KEY] = state;
+}
+
 async function handleGet() {
-  return NextResponse.json(await getMcpBackupState());
+  return NextResponse.json(getEdgeState());
 }
 
 async function handlePut(req: NextRequest) {
@@ -45,13 +68,15 @@ async function handlePut(req: NextRequest) {
     );
   }
 
-  await updateMcpConfig(payload.config, payload.updatedAt);
-  await restartAllClients();
+  setEdgeState(payload);
 
-  return NextResponse.json(await getMcpBackupState());
+  return NextResponse.json({
+    ...payload,
+    persisted: false,
+  });
 }
 
 export const GET = handleGet;
 export const PUT = handlePut;
 
-export const runtime = "nodejs";
+export const runtime = "edge";
