@@ -516,6 +516,12 @@ function SyncItems() {
   const syncLocked =
     accessStore.enabledAccessControl() && !accessStore.hasValidAccessCode();
 
+  useEffect(() => {
+    if (syncLocked && showSyncConfigModal) {
+      setShowSyncConfigModal(false);
+    }
+  }, [showSyncConfigModal, syncLocked]);
+
   const stateOverview = useMemo(() => {
     const sessions = chatStore.sessions;
     const messageCount = sessions.reduce((p, c) => p + c.messages.length, 0);
@@ -554,6 +560,7 @@ function SyncItems() {
               aria={Locale.Settings.Sync.CloudState + Locale.UI.Config}
               icon={<ConfigIcon />}
               text={Locale.UI.Config}
+              disabled={syncLocked}
               onClick={() => {
                 setShowSyncConfigModal(true);
               }}
@@ -651,7 +658,7 @@ function SyncItems() {
         />
       </List>
 
-      {showSyncConfigModal && (
+      {showSyncConfigModal && !syncLocked && (
         <SyncConfigModal onClose={() => setShowSyncConfigModal(false)} />
       )}
     </>
