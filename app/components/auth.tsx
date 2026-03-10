@@ -1,21 +1,45 @@
 import styles from "./auth.module.scss";
 import { IconButton } from "./button";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Path, SAAS_CHAT_URL } from "../constant";
 import { useAccessStore } from "../store";
 import Locale from "../locales";
 import Logo from "../icons/logo.svg";
 import { getClientConfig } from "../config/client";
-import { PasswordInput } from "./ui-lib";
+import { PasswordInput, showToast } from "./ui-lib";
 import LeftIcon from "@/app/icons/left.svg";
 import { trackAuthorizationPageButtonToCPaymentClick } from "../utils/auth-settings-events";
 
 export function AuthPage() {
   const navigate = useNavigate();
   const accessStore = useAccessStore();
+  const [verifying, setVerifying] = useState(false);
 
-  const goChat = () => navigate(Path.Chat);
+  const goChat = async () => {
+    if (accessStore.isAuthorized() || !accessStore.enabledAccessControl()) {
+      navigate(Path.Chat);
+      return;
+    }
+
+    setVerifying(true);
+
+    try {
+      const verified = await accessStore.verifyAccessCode();
+
+      if (!verified) {
+        showToast(Locale.Auth.InvalidCode);
+        return;
+      }
+
+      navigate(Path.Chat);
+    } catch (error) {
+      showToast(Locale.Settings.Sync.TransportError);
+      console.error("[Auth] verify access code failed", error);
+    } finally {
+      setVerifying(false);
+    }
+  };
   const goSaas = () => {
     trackAuthorizationPageButtonToCPaymentClick();
     window.location.href = SAAS_CHAT_URL;
@@ -52,9 +76,7 @@ export function AuthPage() {
         type="text"
         placeholder={Locale.Auth.Input}
         onChange={(e) => {
-          accessStore.update(
-            (access) => (access.accessCode = e.currentTarget.value),
-          );
+          accessStore.setAccessCode(e.currentTarget.value);
         }}
       />
 
@@ -94,6 +116,7 @@ export function AuthPage() {
         <IconButton
           text={Locale.Auth.Confirm}
           type="primary"
+          disabled={verifying}
           onClick={goChat}
         />
         <IconButton

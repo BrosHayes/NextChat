@@ -1,6 +1,12 @@
 import { getClientConfig } from "../config/client";
-import { ApiPath, RUNTIME_CONFIG_DOM, STORAGE_KEY, StoreKey } from "../constant";
+import {
+  ApiPath,
+  RUNTIME_CONFIG_DOM,
+  STORAGE_KEY,
+  StoreKey,
+} from "../constant";
 import { createPersistStore } from "../utils/store";
+import { useAccessStore } from "./access";
 import {
   BackupValidationError,
   createBackupEnvelope,
@@ -24,6 +30,13 @@ export interface WebDavConfig {
   endpoint: string;
   username: string;
   password: string;
+}
+
+export class SyncAccessRequiredError extends Error {
+  constructor() {
+    super("A verified access code is required before using sync");
+    this.name = "SyncAccessRequiredError";
+  }
 }
 
 const isApp = !!getClientConfig()?.isApp;
@@ -93,9 +106,16 @@ export const useSyncStore = createPersistStore(
       set({ lastSyncTime: 0, lastProvider: "" });
     },
 
-    getErrorMessage(error: unknown, fallback: string = Locale.Settings.Sync.Fail) {
+    getErrorMessage(
+      error: unknown,
+      fallback: string = Locale.Settings.Sync.Fail,
+    ) {
       if (error instanceof BackupValidationError) {
         return Locale.Settings.Sync.InvalidBackup;
+      }
+
+      if (error instanceof SyncAccessRequiredError) {
+        return Locale.Settings.Sync.RequiresAccessCode;
       }
 
       if (error instanceof SyncConflictError) {
@@ -109,7 +129,30 @@ export const useSyncStore = createPersistStore(
       return fallback;
     },
 
+    async ensureAuthorized() {
+      const accessStore = useAccessStore.getState();
+
+      if (!accessStore.enabledAccessControl()) {
+        return;
+      }
+
+      if (accessStore.hasValidAccessCode()) {
+        return;
+      }
+
+      await accessStore.verifyAccessCode();
+      const latestAccessStore = useAccessStore.getState();
+
+      if (
+        latestAccessStore.enabledAccessControl() &&
+        !latestAccessStore.hasValidAccessCode()
+      ) {
+        throw new SyncAccessRequiredError();
+      }
+    },
+
     async export() {
+      await this.ensureAuthorized();
       const state = await getLocalAppState();
       const { content } = createBackupEnvelope(state);
       const datePart = isApp
@@ -124,6 +167,7 @@ export const useSyncStore = createPersistStore(
 
     async import() {
       try {
+        await this.ensureAuthorized();
         const rawContent = await readFromFile();
         const remoteState = parseBackupContent(rawContent);
         await setLocalAppState(remoteState.payload);
@@ -142,6 +186,7 @@ export const useSyncStore = createPersistStore(
     },
 
     async sync() {
+      await this.ensureAuthorized();
       const localState = await getLocalAppState();
       const provider = get().provider;
       const config = get()[provider];
@@ -174,6 +219,7 @@ export const useSyncStore = createPersistStore(
     },
 
     async clearBackup() {
+      await this.ensureAuthorized();
       const provider = get().provider;
       const config = get()[provider];
       const client = this.getClient();
@@ -183,6 +229,7 @@ export const useSyncStore = createPersistStore(
     },
 
     async check() {
+      await this.ensureAuthorized();
       const client = this.getClient();
       return await client.check();
     },

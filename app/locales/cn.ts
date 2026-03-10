@@ -24,6 +24,7 @@ const cn = {
     SubTips: "或者输入你的 OpenAI 或 Google AI 密钥",
     Input: "在此处填写访问码",
     Confirm: "确认",
+    InvalidCode: "请先输入正确的访问密码",
     Later: "稍后再说",
     SaasTips: "配置太麻烦，想要立即使用",
     TopTips:
@@ -225,6 +226,7 @@ const cn = {
       NotSyncYet: "还没有进行过同步",
       Success: "同步成功",
       Fail: "同步失败",
+      RequiresAccessCode: "请先输入并验证正确的访问密码，再使用备份同步。",
       Conflict: "远端备份已经变化，请在两台设备都刷新后重新同步。",
       TransportError: "备份服务拒绝了请求，或返回了无效数据。",
       InvalidBackup: "备份文件无效、已损坏，或包含不安全内容。",
@@ -335,6 +337,10 @@ const cn = {
         Title: "访问密码",
         SubTitle: "管理员已开启加密访问",
         Placeholder: "请输入访问密码",
+        Verify: "验证",
+        Verified: "已验证",
+        VerifySuccess: "访问密码已验证通过",
+        VerifyFailed: "访问密码不正确",
       },
       CustomEndpoint: {
         Title: "自定义接口",

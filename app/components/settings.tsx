@@ -290,10 +290,13 @@ function DangerItems() {
 
 function CheckButton() {
   const syncStore = useSyncStore();
+  const accessStore = useAccessStore();
 
   const couldCheck = useMemo(() => {
     return syncStore.cloudSync();
   }, [syncStore]);
+  const syncLocked =
+    accessStore.enabledAccessControl() && !accessStore.hasValidAccessCode();
 
   const [checkState, setCheckState] = useState<
     "none" | "checking" | "success" | "failed"
@@ -301,8 +304,14 @@ function CheckButton() {
 
   async function check() {
     setCheckState("checking");
-    const valid = await syncStore.check();
-    setCheckState(valid ? "success" : "failed");
+    try {
+      const valid = await syncStore.check();
+      setCheckState(valid ? "success" : "failed");
+    } catch (error) {
+      setCheckState("failed");
+      showToast(syncStore.getErrorMessage(error));
+      console.error("[Sync] check failed", error);
+    }
   }
 
   if (!couldCheck) return null;
@@ -312,6 +321,7 @@ function CheckButton() {
       text={Locale.Settings.Sync.Config.Modal.Check}
       bordered
       onClick={check}
+      disabled={syncLocked}
       icon={
         checkState === "none" ? (
           <ConnectionIcon />
@@ -492,6 +502,7 @@ function SyncConfigModal(props: { onClose?: () => void }) {
 
 function SyncItems() {
   const syncStore = useSyncStore();
+  const accessStore = useAccessStore();
   const chatStore = useChatStore();
   const promptStore = usePromptStore();
   const maskStore = useMaskStore();
@@ -502,6 +513,8 @@ function SyncItems() {
   }, [syncStore]);
 
   const [showSyncConfigModal, setShowSyncConfigModal] = useState(false);
+  const syncLocked =
+    accessStore.enabledAccessControl() && !accessStore.hasValidAccessCode();
 
   const stateOverview = useMemo(() => {
     const sessions = chatStore.sessions;
@@ -554,9 +567,12 @@ function SyncItems() {
                 icon={<ClearIcon />}
                 text={Locale.Settings.Sync.ClearBackup}
                 type="danger"
+                disabled={syncLocked}
                 onClick={async () => {
                   if (
-                    !(await showConfirm(Locale.Settings.Sync.ClearBackupConfirm))
+                    !(await showConfirm(
+                      Locale.Settings.Sync.ClearBackupConfirm,
+                    ))
                   ) {
                     return;
                   }
@@ -580,6 +596,7 @@ function SyncItems() {
               <IconButton
                 icon={<ResetIcon />}
                 text={Locale.UI.Sync}
+                disabled={syncLocked}
                 onClick={async () => {
                   try {
                     await syncStore.sync();
@@ -603,23 +620,34 @@ function SyncItems() {
               aria={Locale.Settings.Sync.LocalState + Locale.UI.Export}
               icon={<UploadIcon />}
               text={Locale.UI.Export}
-              onClick={() => {
-                void syncStore.export();
+              disabled={syncLocked}
+              onClick={async () => {
+                try {
+                  await syncStore.export();
+                } catch (error) {
+                  showToast(syncStore.getErrorMessage(error));
+                  console.error("[Sync] export failed", error);
+                }
               }}
             />
             <IconButton
               aria={Locale.Settings.Sync.LocalState + Locale.UI.Import}
               icon={<DownloadIcon />}
               text={Locale.UI.Import}
-              onClick={() => {
-                void syncStore.import();
+              disabled={syncLocked}
+              onClick={async () => {
+                await syncStore.import();
               }}
             />
           </div>
         </ListItem>
         <ListItem
           title={Locale.Settings.Sync.Warning.Title}
-          subTitle={Locale.Settings.Sync.Warning.SubTitle}
+          subTitle={
+            syncLocked
+              ? `${Locale.Settings.Sync.RequiresAccessCode} ${Locale.Settings.Sync.Warning.SubTitle}`
+              : Locale.Settings.Sync.Warning.SubTitle
+          }
         />
       </List>
 
@@ -684,11 +712,7 @@ export function Settings() {
     });
   }
 
-  const enabledAccessControl = useMemo(
-    () => accessStore.enabledAccessControl(),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  );
+  const enabledAccessControl = accessStore.enabledAccessControl();
 
   const promptStore = usePromptStore();
   const builtinCount = SearchService.count.builtin;
@@ -724,22 +748,51 @@ export function Settings() {
 
   const clientConfig = useMemo(() => getClientConfig(), []);
   const showAccessCode = enabledAccessControl && !clientConfig?.isApp;
+  const hasValidAccessCode = accessStore.hasValidAccessCode();
 
   const accessCodeComponent = showAccessCode && (
     <ListItem
       title={Locale.Settings.Access.AccessCode.Title}
-      subTitle={Locale.Settings.Access.AccessCode.SubTitle}
+      subTitle={
+        hasValidAccessCode
+          ? Locale.Settings.Access.AccessCode.Verified
+          : Locale.Settings.Access.AccessCode.SubTitle
+      }
     >
-      <PasswordInput
-        value={accessStore.accessCode}
-        type="text"
-        placeholder={Locale.Settings.Access.AccessCode.Placeholder}
-        onChange={(e) => {
-          accessStore.update(
-            (access) => (access.accessCode = e.currentTarget.value),
-          );
-        }}
-      />
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ flex: 1 }}>
+          <PasswordInput
+            value={accessStore.accessCode}
+            type="text"
+            placeholder={Locale.Settings.Access.AccessCode.Placeholder}
+            onChange={(e) => {
+              accessStore.setAccessCode(e.currentTarget.value);
+            }}
+          />
+        </div>
+        <IconButton
+          text={
+            hasValidAccessCode
+              ? Locale.Settings.Access.AccessCode.Verified
+              : Locale.Settings.Access.AccessCode.Verify
+          }
+          bordered
+          disabled={!accessStore.accessCode.trim() || hasValidAccessCode}
+          onClick={async () => {
+            try {
+              const verified = await accessStore.verifyAccessCode();
+              showToast(
+                verified
+                  ? Locale.Settings.Access.AccessCode.VerifySuccess
+                  : Locale.Settings.Access.AccessCode.VerifyFailed,
+              );
+            } catch (error) {
+              showToast(Locale.Settings.Sync.TransportError);
+              console.error("[Access] verify access code failed", error);
+            }
+          }}
+        />
+      </div>
     </ListItem>
   );
 
@@ -1508,44 +1561,44 @@ export function Settings() {
     </>
   );
 
-  const ai302ConfigComponent = accessStore.provider === ServiceProvider["302.AI"] && (
+  const ai302ConfigComponent = accessStore.provider ===
+    ServiceProvider["302.AI"] && (
     <>
       <ListItem
-          title={Locale.Settings.Access.AI302.Endpoint.Title}
-          subTitle={
-            Locale.Settings.Access.AI302.Endpoint.SubTitle +
-            AI302.ExampleEndpoint
+        title={Locale.Settings.Access.AI302.Endpoint.Title}
+        subTitle={
+          Locale.Settings.Access.AI302.Endpoint.SubTitle + AI302.ExampleEndpoint
+        }
+      >
+        <input
+          aria-label={Locale.Settings.Access.AI302.Endpoint.Title}
+          type="text"
+          value={accessStore.ai302Url}
+          placeholder={AI302.ExampleEndpoint}
+          onChange={(e) =>
+            accessStore.update(
+              (access) => (access.ai302Url = e.currentTarget.value),
+            )
           }
-        >
-          <input
-            aria-label={Locale.Settings.Access.AI302.Endpoint.Title}
-            type="text"
-            value={accessStore.ai302Url}
-            placeholder={AI302.ExampleEndpoint}
-            onChange={(e) =>
-              accessStore.update(
-                (access) => (access.ai302Url = e.currentTarget.value),
-              )
-            }
-          ></input>
-        </ListItem>
-        <ListItem
-          title={Locale.Settings.Access.AI302.ApiKey.Title}
-          subTitle={Locale.Settings.Access.AI302.ApiKey.SubTitle}
-        >
-          <PasswordInput
-            aria-label={Locale.Settings.Access.AI302.ApiKey.Title}
-            value={accessStore.ai302ApiKey}
-            type="text"
-            placeholder={Locale.Settings.Access.AI302.ApiKey.Placeholder}
-            onChange={(e) => {
-              accessStore.update(
-                (access) => (access.ai302ApiKey = e.currentTarget.value),
-              );
-            }}
-          />
-        </ListItem>
-      </>
+        ></input>
+      </ListItem>
+      <ListItem
+        title={Locale.Settings.Access.AI302.ApiKey.Title}
+        subTitle={Locale.Settings.Access.AI302.ApiKey.SubTitle}
+      >
+        <PasswordInput
+          aria-label={Locale.Settings.Access.AI302.ApiKey.Title}
+          value={accessStore.ai302ApiKey}
+          type="text"
+          placeholder={Locale.Settings.Access.AI302.ApiKey.Placeholder}
+          onChange={(e) => {
+            accessStore.update(
+              (access) => (access.ai302ApiKey = e.currentTarget.value),
+            );
+          }}
+        />
+      </ListItem>
+    </>
   );
 
   return (

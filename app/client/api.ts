@@ -198,8 +198,7 @@ export class ClientApi {
       .concat([
         {
           from: "human",
-          value:
-            `Share from [NextChat]: ${REPO_URL}`,
+          value: `Share from [NextChat]: ${REPO_URL}`,
         },
       ]);
     // 敬告二开开发者们，为了开源大模型的发展，请不要修改上述消息，此消息用于后续数据清洗使用
@@ -357,9 +356,9 @@ export function getHeaders(ignoreHeaders: boolean = false) {
 
   if (bearerToken) {
     headers[authHeader] = bearerToken;
-  } else if (isEnabledAccessControl && validString(accessStore.accessCode)) {
+  } else if (isEnabledAccessControl && accessStore.hasValidAccessCode()) {
     headers["Authorization"] = getBearerToken(
-      ACCESS_CODE_PREFIX + accessStore.accessCode,
+      ACCESS_CODE_PREFIX + accessStore.validatedAccessCode,
     );
   }
 

@@ -46,6 +46,7 @@ type NonFunctionFields<T> = Pick<T, NonFunctionKeys<T>>;
 type StripHydration<T> = Omit<T, "_hasHydrated">;
 
 type AccessStoreState = StripHydration<GetStoreState<typeof useAccessStore>>;
+type AccessBackupState = Omit<AccessStoreState, "validatedAccessCode">;
 type ConfigStoreState = StripHydration<GetStoreState<typeof useAppConfig>>;
 type PromptStoreState = StripHydration<GetStoreState<typeof usePromptStore>>;
 type MaskStoreState = StripHydration<GetStoreState<typeof useMaskStore>>;
@@ -84,7 +85,7 @@ export type McpBackupState = {
 
 export type BackupPayload = {
   chat: ChatBackupState;
-  access: AccessStoreState;
+  access: AccessBackupState;
   config: ConfigStoreState;
   mask: MaskBackupState;
   prompt: PromptBackupState;
@@ -159,6 +160,16 @@ function hashPayload(payload: BackupPayload) {
   return SparkMD5.hash(JSON.stringify(payload));
 }
 
+function createDefaultAccessBackupState() {
+  const { validatedAccessCode: _validatedAccessCode, ...defaultAccessState } =
+    DEFAULT_ACCESS_STATE;
+
+  return {
+    ...deepCopy(defaultAccessState),
+    lastUpdateTime: 0,
+  } satisfies AccessBackupState;
+}
+
 function createDefaultBackupPayload(): BackupPayload {
   return deepCopy({
     chat: {
@@ -166,8 +177,7 @@ function createDefaultBackupPayload(): BackupPayload {
       deletedSessions: DEFAULT_CHAT_STATE.deletedSessions,
     },
     access: {
-      ...DEFAULT_ACCESS_STATE,
-      lastUpdateTime: 0,
+      ...createDefaultAccessBackupState(),
     },
     config: {
       ...DEFAULT_CONFIG,
@@ -347,16 +357,14 @@ function normalizePluginState(state: Partial<PluginBackupState> | undefined) {
   } as PluginBackupState;
 }
 
-function normalizeAccessState(state: Partial<AccessStoreState> | undefined) {
-  const normalized = deepCopy({
-    ...DEFAULT_ACCESS_STATE,
-    lastUpdateTime: 0,
-  }) as AccessStoreState;
+function normalizeAccessState(state: Partial<AccessBackupState> | undefined) {
+  const normalized = createDefaultAccessBackupState();
 
   merge(normalized, state ?? {});
+  delete (normalized as Partial<AccessStoreState>).validatedAccessCode;
   normalized.lastUpdateTime = normalizeTimestamp(state?.lastUpdateTime, 0);
 
-  return normalized;
+  return normalized satisfies AccessBackupState;
 }
 
 function normalizeConfigState(state: Partial<ConfigStoreState> | undefined) {
@@ -509,7 +517,7 @@ function looksLikeLegacyAppState(
 function normalizeLegacyPayload(value: Record<string, unknown>) {
   return normalizeBackupPayload({
     chat: value[StoreKey.Chat] as ChatBackupState,
-    access: value[StoreKey.Access] as AccessStoreState,
+    access: value[StoreKey.Access] as AccessBackupState,
     config: value[StoreKey.Config] as ConfigStoreState,
     mask: value[StoreKey.Mask] as MaskBackupState,
     prompt: value[StoreKey.Prompt] as PromptBackupState,
@@ -820,6 +828,8 @@ function getChatStoreUpdateTime(state: ChatBackupState) {
 export async function getLocalAppState() {
   const chatState = getNonFunctionFileds(useChatStore.getState());
   const accessState = getNonFunctionFileds(useAccessStore.getState());
+  const { validatedAccessCode: _validatedAccessCode, ...accessBackupState } =
+    accessState;
   const configState = getNonFunctionFileds(useAppConfig.getState());
   const maskState = getNonFunctionFileds(useMaskStore.getState());
   const promptState = getNonFunctionFileds(usePromptStore.getState());
@@ -832,7 +842,8 @@ export async function getLocalAppState() {
       deletedSessions: deepCopy(chatState.deletedSessions ?? {}),
     },
     access: {
-      ...accessState,
+      ...createDefaultAccessBackupState(),
+      ...accessBackupState,
     },
     config: {
       ...configState,
@@ -874,7 +885,10 @@ export async function setLocalAppState(appState: BackupPayload) {
     lastInput: "",
     lastUpdateTime: getChatStoreUpdateTime(normalized.chat),
   });
-  useAccessStore.setState(normalized.access);
+  useAccessStore.setState({
+    ...normalized.access,
+    validatedAccessCode: "",
+  });
   useAppConfig.setState(normalized.config);
   useMaskStore.setState(normalized.mask);
   usePromptStore.setState(normalized.prompt);

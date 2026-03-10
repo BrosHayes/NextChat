@@ -25,6 +25,7 @@ const en: LocaleType = {
     SubTips: "Or enter your OpenAI or Google API Key",
     Input: "access code",
     Confirm: "Confirm",
+    InvalidCode: "Please enter the correct access code first",
     Later: "Later",
     SaasTips: "Too Complex, Use Immediately Now",
     TopTips:
@@ -227,8 +228,12 @@ const en: LocaleType = {
       NotSyncYet: "Not sync yet",
       Success: "Sync Success",
       Fail: "Sync Fail",
-      Conflict: "Remote backup changed. Sync again after refreshing both devices.",
-      TransportError: "Backup service rejected the request or returned invalid data.",
+      RequiresAccessCode:
+        "Enter and verify the correct access code before using backup sync.",
+      Conflict:
+        "Remote backup changed. Sync again after refreshing both devices.",
+      TransportError:
+        "Backup service rejected the request or returned invalid data.",
       InvalidBackup: "Backup file is invalid, corrupted, or unsafe.",
       ClearBackup: "Clear Backup",
       ClearBackupConfirm:
@@ -340,6 +345,10 @@ const en: LocaleType = {
         Title: "Access Code",
         SubTitle: "Access control Enabled",
         Placeholder: "Enter Code",
+        Verify: "Verify",
+        Verified: "Verified",
+        VerifySuccess: "Access code verified",
+        VerifyFailed: "Access code is invalid",
       },
       CustomEndpoint: {
         Title: "Custom Endpoint",

@@ -18,6 +18,7 @@ import {
   CHATGLM_BASE_URL,
   SILICONFLOW_BASE_URL,
   AI302_BASE_URL,
+  ACCESS_CODE_PREFIX,
 } from "../constant";
 import { getHeaders } from "../client/api";
 import { getClientConfig } from "../config/client";
@@ -64,6 +65,7 @@ const DEFAULT_AI302_URL = isApp ? AI302_BASE_URL : ApiPath["302.AI"];
 
 export const DEFAULT_ACCESS_STATE = {
   accessCode: "",
+  validatedAccessCode: "",
   useCustomConfig: false,
 
   provider: ServiceProvider.OpenAI,
@@ -157,10 +159,77 @@ export const useAccessStore = createPersistStore(
   { ...DEFAULT_ACCESS_STATE },
 
   (set, get) => ({
+    getAccessCode() {
+      return get().accessCode.trim();
+    },
+    setAccessCode(accessCode: string) {
+      const normalizedAccessCode = accessCode.trim();
+      const nextValidatedAccessCode =
+        get().validatedAccessCode === normalizedAccessCode
+          ? normalizedAccessCode
+          : "";
+
+      set({
+        accessCode,
+        validatedAccessCode: nextValidatedAccessCode,
+        lastUpdateTime: Date.now(),
+      });
+    },
     enabledAccessControl() {
       this.fetch();
 
       return get().needCode;
+    },
+    hasValidAccessCode() {
+      this.fetch();
+
+      const accessCode = this.getAccessCode();
+
+      return (
+        this.enabledAccessControl() &&
+        accessCode.length > 0 &&
+        get().validatedAccessCode === accessCode
+      );
+    },
+    async verifyAccessCode() {
+      const accessCode = this.getAccessCode();
+
+      if (getClientConfig()?.buildMode === "export") {
+        const isValid = accessCode.length > 0;
+        set({
+          accessCode,
+          validatedAccessCode: isValid ? accessCode : "",
+          lastUpdateTime: Date.now(),
+        });
+        return isValid;
+      }
+
+      const res = await fetch("/api/auth/check", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${ACCESS_CODE_PREFIX}${accessCode}`,
+        },
+      });
+
+      const data = (await res.json().catch(() => null)) as {
+        authorized?: boolean;
+        needCode?: boolean;
+      } | null;
+      const currentAccessCode = get().accessCode.trim();
+      const nextNeedCode =
+        typeof data?.needCode === "boolean" ? data.needCode : get().needCode;
+      const authorized = res.ok && data?.authorized === true;
+
+      set({
+        needCode: nextNeedCode,
+        validatedAccessCode:
+          authorized && nextNeedCode && currentAccessCode === accessCode
+            ? accessCode
+            : "",
+        lastUpdateTime: Date.now(),
+      });
+
+      return authorized;
     },
     getVisionModels() {
       this.fetch();
@@ -229,7 +298,7 @@ export const useAccessStore = createPersistStore(
     isAuthorized() {
       this.fetch();
 
-      // has token or has code or disabled access control
+      // has token or has verified access code or disabled access control
       return (
         this.isValidOpenAI() ||
         this.isValidAzure() ||
@@ -246,7 +315,7 @@ export const useAccessStore = createPersistStore(
         this.isValidChatGLM() ||
         this.isValidSiliconFlow() ||
         !this.enabledAccessControl() ||
-        (this.enabledAccessControl() && ensure(get(), ["accessCode"]))
+        this.hasValidAccessCode()
       );
     },
     fetch() {
@@ -284,7 +353,7 @@ export const useAccessStore = createPersistStore(
   }),
   {
     name: StoreKey.Access,
-    version: 2,
+    version: 3,
     migrate(persistedState, version) {
       if (version < 2) {
         const state = persistedState as {
@@ -295,6 +364,14 @@ export const useAccessStore = createPersistStore(
         };
         state.openaiApiKey = state.token;
         state.azureApiVersion = "2023-08-01-preview";
+      }
+
+      if (version < 3) {
+        (
+          persistedState as typeof DEFAULT_ACCESS_STATE & {
+            validatedAccessCode?: string;
+          }
+        ).validatedAccessCode = "";
       }
 
       return persistedState as any;

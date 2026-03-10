@@ -636,13 +636,13 @@ export function ChatActions(props: {
           />
         )}
 
-        {(
+        {
           <ChatAction
             onClick={props.uploadImage}
             text={Locale.Chat.InputActions.UploadImage}
             icon={props.uploading ? <LoadingButtonIcon /> : <ImageIcon />}
           />
-        )}
+        }
         <ChatAction
           onClick={nextTheme}
           text={Locale.Chat.InputActions.Theme[theme]}
@@ -1475,8 +1475,7 @@ function _Chat() {
     let nextChunkToPlay = 0;
     let activeRequests = 0;
     let completedRequests = 0;
-    const concurrency =
-      config.ttsConfig.engine === DEFAULT_TTS_ENGINE ? 2 : 1;
+    const concurrency = config.ttsConfig.engine === DEFAULT_TTS_ENGINE ? 2 : 1;
 
     const flushReadyBuffers = () => {
       if (speechTaskRef.current !== speechTaskId || hasFailed) {
@@ -1688,7 +1687,7 @@ function _Chat() {
       console.log("[Command] got code from url: ", text);
       showConfirm(Locale.URLCommand.Code + `code = ${text}`).then((res) => {
         if (res) {
-          accessStore.update((access) => (access.accessCode = text));
+          accessStore.setAccessCode(text);
         }
       });
     },
