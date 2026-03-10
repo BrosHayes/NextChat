@@ -294,6 +294,13 @@ export function getDisplayImageUrl(imageUrl: string) {
 
   try {
     const url = new URL(imageUrl);
+    if (
+      typeof window !== "undefined" &&
+      url.origin === window.location.origin
+    ) {
+      return `${url.pathname}${url.search}${url.hash}`;
+    }
+
     if (url.protocol === "http:" || url.protocol === "https:") {
       return `/api/image?url=${encodeURIComponent(imageUrl)}`;
     }
