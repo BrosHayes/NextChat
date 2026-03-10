@@ -877,6 +877,15 @@ export async function setLocalAppState(appState: BackupPayload) {
   const normalized = normalizeBackupPayload(appState);
   const userPrompts = Object.values(normalized.prompt.prompts);
   const plugins = Object.values(normalized.plugin.plugins);
+  const currentAccessState = useAccessStore.getState();
+  const currentAccessCode = currentAccessState.accessCode.trim();
+  const currentValidatedAccessCode =
+    currentAccessState.validatedAccessCode.trim();
+  const nextAccessCode = normalized.access.accessCode.trim();
+  const shouldPreserveValidatedAccessCode =
+    currentValidatedAccessCode.length > 0 &&
+    currentValidatedAccessCode === currentAccessCode &&
+    currentAccessCode === nextAccessCode;
 
   useChatStore.setState({
     sessions: normalized.chat.sessions,
@@ -887,7 +896,9 @@ export async function setLocalAppState(appState: BackupPayload) {
   });
   useAccessStore.setState({
     ...normalized.access,
-    validatedAccessCode: "",
+    validatedAccessCode: shouldPreserveValidatedAccessCode
+      ? nextAccessCode
+      : "",
   });
   useAppConfig.setState(normalized.config);
   useMaskStore.setState(normalized.mask);

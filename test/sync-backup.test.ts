@@ -1,4 +1,5 @@
 import { StoreKey } from "../app/constant";
+import { DEFAULT_ACCESS_STATE, useAccessStore } from "../app/store/access";
 import { chunkUtf8String } from "../app/utils/cloud/upstash";
 import {
   BackupPayload,
@@ -7,6 +8,7 @@ import {
   mergeAppState,
   mergeWithUpdate,
   parseBackupContent,
+  setLocalAppState,
 } from "../app/utils/sync";
 
 function createPayload(overrides: Partial<BackupPayload> = {}) {
@@ -75,6 +77,13 @@ function createMask(overrides: Record<string, unknown> = {}) {
 }
 
 describe("backup and sync helpers", () => {
+  beforeEach(() => {
+    useAccessStore.setState({
+      ...DEFAULT_ACCESS_STATE,
+      lastUpdateTime: 0,
+    });
+  });
+
   test("mergeWithUpdate prefers the newer state", () => {
     expect(
       mergeWithUpdate(
@@ -285,6 +294,52 @@ describe("backup and sync helpers", () => {
     expect(merged.prompt.prompts.prompt_1.title).toBe("Remote Prompt");
     expect(merged.plugin.plugins.plugin_1.title).toBe("Remote Plugin");
     expect(merged.sd.draw[0].status).toBe("success");
+  });
+
+  test("setLocalAppState preserves a verified access code when the code is unchanged", async () => {
+    useAccessStore.setState({
+      ...DEFAULT_ACCESS_STATE,
+      accessCode: "secret-code",
+      validatedAccessCode: "secret-code",
+      needCode: true,
+      lastUpdateTime: 10,
+    });
+
+    await setLocalAppState(
+      createPayload({
+        access: {
+          accessCode: "secret-code",
+          needCode: true,
+          lastUpdateTime: 20,
+        },
+      }),
+    );
+
+    expect(useAccessStore.getState().accessCode).toBe("secret-code");
+    expect(useAccessStore.getState().validatedAccessCode).toBe("secret-code");
+  });
+
+  test("setLocalAppState clears a verified access code when the code changes", async () => {
+    useAccessStore.setState({
+      ...DEFAULT_ACCESS_STATE,
+      accessCode: "secret-code",
+      validatedAccessCode: "secret-code",
+      needCode: true,
+      lastUpdateTime: 10,
+    });
+
+    await setLocalAppState(
+      createPayload({
+        access: {
+          accessCode: "new-secret-code",
+          needCode: true,
+          lastUpdateTime: 20,
+        },
+      }),
+    );
+
+    expect(useAccessStore.getState().accessCode).toBe("new-secret-code");
+    expect(useAccessStore.getState().validatedAccessCode).toBe("");
   });
 
   test("parseBackupContent supports legacy backups and rejects tampering", () => {
