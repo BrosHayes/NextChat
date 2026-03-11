@@ -4,6 +4,7 @@ export type TTSAudioCacheKeyOptions = {
   voice: string;
   speed?: number;
   input: string;
+  cacheBust?: string | number;
 };
 
 type TTSAudioCacheOptions = {
@@ -26,6 +27,7 @@ export function buildTTSAudioCacheKey(options: TTSAudioCacheKeyOptions) {
     voice: options.voice,
     speed: options.speed ?? 1,
     input: options.input.trim(),
+    cacheBust: options.cacheBust ?? "",
   });
 }
 

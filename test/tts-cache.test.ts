@@ -78,4 +78,22 @@ describe("ttsAudioCache", () => {
     expect(cache.get(keyB)).toBeDefined();
     expect(cache.get(keyC)).toBeDefined();
   });
+
+  test("changes the cache key when a retry cache-bust token is present", () => {
+    const baseOptions = {
+      engine: "openai",
+      model: "tts-1",
+      voice: "alloy",
+      speed: 1,
+      input: "hello world",
+    };
+
+    const firstKey = buildTTSAudioCacheKey(baseOptions);
+    const retriedKey = buildTTSAudioCacheKey({
+      ...baseOptions,
+      cacheBust: 1,
+    });
+
+    expect(retriedKey).not.toBe(firstKey);
+  });
 });

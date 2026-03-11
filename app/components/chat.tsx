@@ -1305,6 +1305,10 @@ function _Chat() {
   const speechTaskRef = useRef(0);
   const speechControllersRef = useRef<AbortController[]>([]);
   const edgeTTSRef = useRef<MsEdgeTTS | null>(null);
+  const failedSpeechCacheRef = useRef<{
+    requestKey: string;
+    version: number;
+  } | null>(null);
 
   const clearSpeechControllers = useCallback(() => {
     speechControllersRef.current.forEach((controller) => controller.abort());
@@ -1396,6 +1400,17 @@ function _Chat() {
     const textContent = markdownToTxt(text);
     const chunks = splitTextForTTS(textContent);
     const ttsVoice = config.ttsConfig.voice;
+    const speechRequestKey = buildTTSAudioCacheKey({
+      engine: config.ttsConfig.engine,
+      model: config.ttsConfig.model,
+      voice: ttsVoice,
+      speed: config.ttsConfig.speed,
+      input: textContent,
+    });
+    const speechCacheBustVersion =
+      failedSpeechCacheRef.current?.requestKey === speechRequestKey
+        ? failedSpeechCacheRef.current.version
+        : undefined;
 
     if (chunks.length === 0) {
       return;
@@ -1430,6 +1445,13 @@ function _Chat() {
       }
 
       hasFailed = true;
+      failedSpeechCacheRef.current = {
+        requestKey: speechRequestKey,
+        version:
+          failedSpeechCacheRef.current?.requestKey === speechRequestKey
+            ? failedSpeechCacheRef.current.version + 1
+            : 1,
+      };
       console.error("[TTS]", error);
       stopSpeech();
       showToast(prettyObject(error));
@@ -1445,6 +1467,10 @@ function _Chat() {
         speechBusyRef.current = false;
         setSpeechLoading(false);
         setSpeechStatus(false);
+
+        if (failedSpeechCacheRef.current?.requestKey === speechRequestKey) {
+          failedSpeechCacheRef.current = null;
+        }
       },
       onError: failSpeech,
     });
@@ -1532,6 +1558,7 @@ function _Chat() {
           voice: ttsVoice,
           speed: config.ttsConfig.speed,
           input: chunkText,
+          cacheBust: speechCacheBustVersion,
         });
         nextChunkToRequest += 1;
         activeRequests += 1;
