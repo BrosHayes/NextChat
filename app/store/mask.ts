@@ -141,7 +141,7 @@ export const useMaskStore = createPersistStore(
   }),
   {
     name: StoreKey.Mask,
-    version: 3.2,
+    version: 3.3,
 
     migrate(state, version) {
       const newState = JSON.parse(JSON.stringify(state)) as MaskState;
@@ -162,6 +162,16 @@ export const useMaskStore = createPersistStore(
       if (version < 3.2) {
         Object.values(newState.masks).forEach((m) => {
           m.updatedAt = m.updatedAt ?? m.createdAt ?? Date.now();
+        });
+      }
+
+      if (version < 3.3) {
+        const config = useAppConfig.getState();
+        Object.values(newState.masks).forEach((m) => {
+          m.modelConfig.contextWindowTokens =
+            m.modelConfig.contextWindowTokens ??
+            m.modelConfig.max_tokens ??
+            config.modelConfig.contextWindowTokens;
         });
       }
 

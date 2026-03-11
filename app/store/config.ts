@@ -38,6 +38,8 @@ export enum Theme {
 }
 
 const config = getClientConfig();
+export const MODEL_TOKEN_LIMIT_MAX = 2_000_000;
+const DEFAULT_MODEL_TOKEN_LIMIT = 64_000;
 
 export const DEFAULT_CONFIG = {
   lastUpdate: Date.now(), // timestamp, to merge state
@@ -69,7 +71,8 @@ export const DEFAULT_CONFIG = {
     providerName: "OpenAI" as ServiceProvider,
     temperature: 0.5,
     top_p: 1,
-    max_tokens: 64000,
+    contextWindowTokens: DEFAULT_MODEL_TOKEN_LIMIT,
+    max_tokens: DEFAULT_MODEL_TOKEN_LIMIT,
     presence_penalty: 0,
     frequency_penalty: 0,
     sendMemory: true,
@@ -126,6 +129,18 @@ export function limitNumber(
   return Math.min(max, Math.max(min, x));
 }
 
+export function getContextWindowTokens(config?: Partial<ModelConfig>) {
+  const fallback =
+    config?.max_tokens ?? DEFAULT_CONFIG.modelConfig.contextWindowTokens;
+
+  return limitNumber(
+    Number(config?.contextWindowTokens ?? fallback),
+    0,
+    MODEL_TOKEN_LIMIT_MAX,
+    fallback,
+  );
+}
+
 export const TTSConfigValidator = {
   engine(x: string) {
     return x as TTSEngineType;
@@ -145,8 +160,16 @@ export const ModalConfigValidator = {
   model(x: string) {
     return x as ModelType;
   },
+  contextWindowTokens(x: number) {
+    return limitNumber(
+      x,
+      0,
+      MODEL_TOKEN_LIMIT_MAX,
+      DEFAULT_CONFIG.modelConfig.contextWindowTokens,
+    );
+  },
   max_tokens(x: number) {
-    return limitNumber(x, 0, 512000, 1024);
+    return limitNumber(x, 0, MODEL_TOKEN_LIMIT_MAX, 1024);
   },
   presence_penalty(x: number) {
     return limitNumber(x, -2, 2, 0);
@@ -196,7 +219,7 @@ export const useAppConfig = createPersistStore(
   }),
   {
     name: StoreKey.Config,
-    version: 4.3,
+    version: 4.4,
 
     merge(persistedState, currentState) {
       const state = persistedState as ChatConfig | undefined;
@@ -278,6 +301,13 @@ export const useAppConfig = createPersistStore(
         if (usesLegacyDefaultTTSConfig) {
           state.ttsConfig = { ...DEFAULT_CONFIG.ttsConfig };
         }
+      }
+
+      if (version < 4.4) {
+        state.modelConfig.contextWindowTokens =
+          state.modelConfig.contextWindowTokens ??
+          state.modelConfig.max_tokens ??
+          DEFAULT_CONFIG.modelConfig.contextWindowTokens;
       }
 
       return state as any;

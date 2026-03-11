@@ -592,9 +592,13 @@ const en: LocaleType = {
       Title: "Top P",
       SubTitle: "Do not alter this value together with temperature",
     },
+    ContextWindowTokens: {
+      Title: "Context Window Tokens",
+      SubTitle: "Maximum estimated history and input tokens kept per request",
+    },
     MaxTokens: {
-      Title: "Max Tokens",
-      SubTitle: "Maximum length of input tokens and generated tokens",
+      Title: "Max Output Tokens",
+      SubTitle: "Maximum generated tokens for a single reply",
     },
     PresencePenalty: {
       Title: "Presence Penalty",

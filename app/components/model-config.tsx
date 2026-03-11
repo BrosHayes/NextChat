@@ -1,5 +1,10 @@
 import { ServiceProvider } from "@/app/constant";
-import { ModalConfigValidator, ModelConfig } from "../store";
+import {
+  getContextWindowTokens,
+  ModalConfigValidator,
+  ModelConfig,
+  MODEL_TOKEN_LIMIT_MAX,
+} from "../store";
 
 import Locale from "../locales";
 import { InputRange } from "./input-range";
@@ -93,6 +98,28 @@ export function ModelConfigList(props: {
         ></InputRange>
       </ListItem>
       <ListItem
+        title={Locale.Settings.ContextWindowTokens.Title}
+        subTitle={Locale.Settings.ContextWindowTokens.SubTitle}
+      >
+        <input
+          aria-label={Locale.Settings.ContextWindowTokens.Title}
+          type="number"
+          min={1024}
+          max={MODEL_TOKEN_LIMIT_MAX}
+          value={getContextWindowTokens(props.modelConfig)}
+          onChange={(e) =>
+            props.updateConfig(
+              (config) =>
+                (config.contextWindowTokens =
+                  ModalConfigValidator.contextWindowTokens(
+                    e.currentTarget.valueAsNumber,
+                  )),
+            )
+          }
+        ></input>
+      </ListItem>
+
+      <ListItem
         title={Locale.Settings.MaxTokens.Title}
         subTitle={Locale.Settings.MaxTokens.SubTitle}
       >
@@ -100,7 +127,7 @@ export function ModelConfigList(props: {
           aria-label={Locale.Settings.MaxTokens.Title}
           type="number"
           min={1024}
-          max={512000}
+          max={MODEL_TOKEN_LIMIT_MAX}
           value={props.modelConfig.max_tokens}
           onChange={(e) =>
             props.updateConfig(
@@ -221,7 +248,7 @@ export function ModelConfigList(props: {
           aria-label={Locale.Settings.CompressThreshold.Title}
           type="number"
           min={500}
-          max={512000}
+          max={MODEL_TOKEN_LIMIT_MAX}
           value={props.modelConfig.compressMessageLengthThreshold}
           onChange={(e) =>
             props.updateConfig(

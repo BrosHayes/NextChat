@@ -1,5 +1,6 @@
 import { StoreKey } from "../app/constant";
 import { DEFAULT_ACCESS_STATE, useAccessStore } from "../app/store/access";
+import { DEFAULT_CONFIG } from "../app/store/config";
 import { chunkUtf8String } from "../app/utils/cloud/upstash";
 import {
   BackupPayload,
@@ -11,17 +12,19 @@ import {
   setLocalAppState,
 } from "../app/utils/sync";
 
-function createPayload(overrides: Partial<BackupPayload> = {}) {
+function createPayload(overrides: any = {}) {
   return {
     chat: {
       sessions: [],
       deletedSessions: {},
     },
     access: {
+      ...DEFAULT_ACCESS_STATE,
       lastUpdateTime: 0,
     },
     config: {
-      lastUpdateTime: 0,
+      ...DEFAULT_CONFIG,
+      lastUpdate: 0,
     },
     mask: {
       masks: {},
@@ -67,6 +70,7 @@ function createMask(overrides: Record<string, unknown> = {}) {
     context: [],
     syncGlobalConfig: true,
     modelConfig: {
+      ...DEFAULT_CONFIG.modelConfig,
       model: "gpt-4o-mini",
       providerName: "OpenAI",
     },

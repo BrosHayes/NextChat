@@ -583,9 +583,13 @@ const cn = {
       Title: "核采样 (top_p)",
       SubTitle: "与随机性类似，但不要和随机性一起更改",
     },
+    ContextWindowTokens: {
+      Title: "上下文窗口上限 (contextWindowTokens)",
+      SubTitle: "每次请求最多保留的历史与输入 Token 估算上限",
+    },
     MaxTokens: {
-      Title: "单次回复限制 (max_tokens)",
-      SubTitle: "单次交互所用的最大 Token 数",
+      Title: "单次回复上限 (max_tokens)",
+      SubTitle: "模型单次最多生成的 Token 数",
     },
     PresencePenalty: {
       Title: "话题新鲜度 (presence_penalty)",

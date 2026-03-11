@@ -32,7 +32,13 @@ import Locale, { getLang } from "../locales";
 import { prettyObject } from "../utils/format";
 import { createPersistStore } from "../utils/store";
 import { estimateTokenLength } from "../utils/token";
-import { DEFAULT_CONFIG, ModelConfig, ModelType, useAppConfig } from "./config";
+import {
+  DEFAULT_CONFIG,
+  getContextWindowTokens,
+  ModelConfig,
+  ModelType,
+  useAppConfig,
+} from "./config";
 import { useAccessStore } from "./access";
 import { collectModelsWithDefaultModel } from "../utils/model";
 import { createEmptyMask, Mask } from "./mask";
@@ -645,7 +651,7 @@ export const useChatStore = createPersistStore(
           : shortTermMemoryStartIndex;
         // and if user has cleared history messages, we should exclude the memory too.
         const contextStartIndex = Math.max(clearContextIndex, memoryStartIndex);
-        const maxTokenThreshold = modelConfig.max_tokens;
+        const maxTokenThreshold = getContextWindowTokens(modelConfig);
 
         // get recent messages as much as possible
         const reversedRecentMessages = [];
@@ -765,10 +771,9 @@ export const useChatStore = createPersistStore(
 
         const historyMsgLength = countMessages(toBeSummarizedMsgs);
 
-        if (
-          historyMsgLength >
-          (modelConfig?.max_tokens || DEFAULT_CONFIG.modelConfig.max_tokens)
-        ) {
+        const contextWindowTokens = getContextWindowTokens(modelConfig);
+
+        if (historyMsgLength > contextWindowTokens) {
           const n = toBeSummarizedMsgs.length;
           toBeSummarizedMsgs = toBeSummarizedMsgs.slice(
             Math.max(0, n - modelConfig.historyMessageCount),
@@ -895,7 +900,7 @@ export const useChatStore = createPersistStore(
   },
   {
     name: StoreKey.Chat,
-    version: 3.5,
+    version: 3.6,
     migrate(persistedState, version) {
       const state = persistedState as any;
       const newState = JSON.parse(
@@ -993,6 +998,16 @@ export const useChatStore = createPersistStore(
           deletedSessions,
           state.deletedSessions,
         );
+      }
+
+      if (version < 3.6) {
+        const config = useAppConfig.getState();
+        newState.sessions.forEach((session) => {
+          session.mask.modelConfig.contextWindowTokens =
+            session.mask.modelConfig.contextWindowTokens ??
+            session.mask.modelConfig.max_tokens ??
+            config.modelConfig.contextWindowTokens;
+        });
       }
 
       return newState as any;
