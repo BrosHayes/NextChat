@@ -12,7 +12,15 @@
   gap: 8px;
 
   input {
-    width: 96px;
+    width: 128px;
+    padding-right: 10px;
+    appearance: textfield;
+
+    &::-webkit-outer-spin-button,
+    &::-webkit-inner-spin-button {
+      appearance: none;
+      margin: 0;
+    }
   }
 
   span {
