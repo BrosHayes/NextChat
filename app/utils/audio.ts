@@ -3,14 +3,9 @@ type TTSPlayerCallbacks = {
   onError?: (error: Error) => void;
 };
 
-type TTSQueueItem = {
-  audioBuffer: ArrayBuffer;
-  onEnded?: () => void | null;
-};
-
 type TTSPlayer = {
   init: (callbacks?: TTSPlayerCallbacks) => void;
-  enqueue: (audioBuffer: ArrayBuffer, onEnded?: () => void | null) => void;
+  enqueue: (audioBuffer: ArrayBuffer) => void;
   finish: () => void;
   play: (
     audioBuffer: ArrayBuffer,
@@ -22,7 +17,7 @@ type TTSPlayer = {
 export function createTTSPlayer(): TTSPlayer {
   let audioElement: HTMLAudioElement | null = null;
   let objectUrl: string | null = null;
-  let queue: TTSQueueItem[] = [];
+  let queue: ArrayBuffer[] = [];
   let finished = false;
   let playing = false;
   let callbacks: TTSPlayerCallbacks = {};
@@ -96,9 +91,9 @@ export function createTTSPlayer(): TTSPlayer {
       return;
     }
 
-    const nextItem = queue.shift();
+    const nextBuffer = queue.shift();
 
-    if (!nextItem) {
+    if (!nextBuffer) {
       emitEndedIfDone();
       return;
     }
@@ -106,7 +101,7 @@ export function createTTSPlayer(): TTSPlayer {
     cleanupAudioElement();
 
     objectUrl = URL.createObjectURL(
-      new Blob([nextItem.audioBuffer], { type: "audio/mpeg" }),
+      new Blob([nextBuffer], { type: "audio/mpeg" }),
     );
 
     const currentAudio = new Audio(objectUrl);
@@ -120,7 +115,6 @@ export function createTTSPlayer(): TTSPlayer {
       }
 
       playing = false;
-      nextItem.onEnded?.();
       cleanupAudioElement();
       playNext();
     };
@@ -149,8 +143,8 @@ export function createTTSPlayer(): TTSPlayer {
     cleanupAudioElement();
   };
 
-  const enqueue = (audioBuffer: ArrayBuffer, onEnded?: () => void | null) => {
-    queue.push({ audioBuffer, onEnded });
+  const enqueue = (audioBuffer: ArrayBuffer) => {
+    queue.push(audioBuffer);
     playNext();
   };
 
