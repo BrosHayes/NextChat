@@ -1830,7 +1830,9 @@ function _Chat() {
 
           setUploading(true);
           Promise.all(
-            Array.from(files as FileList).map((file) => uploadImageRemote(file)),
+            Array.from(files as FileList).map((file) =>
+              uploadImageRemote(file),
+            ),
           )
             .then((imagesData) => {
               setUploading(false);
