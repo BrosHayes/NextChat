@@ -1305,6 +1305,10 @@ function _Chat() {
   const speechTaskRef = useRef(0);
   const speechControllersRef = useRef<AbortController[]>([]);
   const edgeTTSRef = useRef<MsEdgeTTS | null>(null);
+  const speechResumeRef = useRef<{
+    requestKey: string;
+    nextChunkIndex: number;
+  } | null>(null);
 
   const clearSpeechControllers = useCallback(() => {
     speechControllersRef.current.forEach((controller) => controller.abort());
@@ -1326,6 +1330,7 @@ function _Chat() {
   const stopSpeech = useCallback(() => {
     speechBusyRef.current = false;
     speechTaskRef.current += 1;
+    speechResumeRef.current = null;
     clearSpeechControllers();
     closeEdgeTTS();
     ttsPlayer.stop();
@@ -1396,9 +1401,27 @@ function _Chat() {
     const textContent = markdownToTxt(text);
     const chunks = splitTextForTTS(textContent);
     const ttsVoice = config.ttsConfig.voice;
+    const speechRequestKey = buildTTSAudioCacheKey({
+      engine: config.ttsConfig.engine,
+      model: config.ttsConfig.model,
+      voice: ttsVoice,
+      speed: config.ttsConfig.speed,
+      input: textContent,
+    });
+    const resumeState = speechResumeRef.current;
+    const resumeStartIndex =
+      resumeState?.requestKey === speechRequestKey &&
+      resumeState.nextChunkIndex > 0 &&
+      resumeState.nextChunkIndex < chunks.length
+        ? resumeState.nextChunkIndex
+        : 0;
 
     if (chunks.length === 0) {
       return;
+    }
+
+    if (resumeStartIndex === 0) {
+      speechResumeRef.current = null;
     }
 
     const speechTaskId = speechTaskRef.current + 1;
@@ -1411,6 +1434,7 @@ function _Chat() {
     let edgeTTS: MsEdgeTTS | null = null;
     let firstChunkQueued = false;
     let hasFailed = false;
+    let lastFinishedChunkIndex = resumeStartIndex - 1;
 
     const getApi = () => {
       if (!api) {
@@ -1418,6 +1442,21 @@ function _Chat() {
       }
 
       return api;
+    };
+
+    const saveSpeechResume = () => {
+      const nextChunkIndex = Math.max(
+        resumeStartIndex,
+        lastFinishedChunkIndex + 1,
+      );
+
+      speechResumeRef.current =
+        nextChunkIndex < chunks.length
+          ? {
+              requestKey: speechRequestKey,
+              nextChunkIndex,
+            }
+          : null;
     };
 
     const failSpeech = (error: unknown) => {
@@ -1431,7 +1470,20 @@ function _Chat() {
 
       hasFailed = true;
       console.error("[TTS]", error);
-      stopSpeech();
+      saveSpeechResume();
+      clearSpeechControllers();
+      closeEdgeTTS();
+
+      if (firstChunkQueued) {
+        setSpeechLoading(false);
+        ttsPlayer.finish();
+      } else {
+        speechBusyRef.current = false;
+        ttsPlayer.stop();
+        setSpeechLoading(false);
+        setSpeechStatus(false);
+      }
+
       showToast(prettyObject(error));
     };
 
@@ -1445,6 +1497,12 @@ function _Chat() {
         speechBusyRef.current = false;
         setSpeechLoading(false);
         setSpeechStatus(false);
+
+        if (hasFailed) {
+          saveSpeechResume();
+        } else if (speechResumeRef.current?.requestKey === speechRequestKey) {
+          speechResumeRef.current = null;
+        }
       },
       onError: failSpeech,
     });
@@ -1471,8 +1529,8 @@ function _Chat() {
     };
 
     const readyBuffers = new Map<number, ArrayBuffer>();
-    let nextChunkToRequest = 0;
-    let nextChunkToPlay = 0;
+    let nextChunkToRequest = resumeStartIndex;
+    let nextChunkToPlay = resumeStartIndex;
     let activeRequests = 0;
     let completedRequests = 0;
     const concurrency = config.ttsConfig.engine === DEFAULT_TTS_ENGINE ? 2 : 1;
@@ -1490,7 +1548,14 @@ function _Chat() {
         }
 
         readyBuffers.delete(nextChunkToPlay);
-        ttsPlayer.enqueue(audioBuffer);
+        const chunkIndex = nextChunkToPlay;
+        ttsPlayer.enqueue(audioBuffer, () => {
+          if (speechTaskRef.current !== speechTaskId) {
+            return;
+          }
+
+          lastFinishedChunkIndex = Math.max(lastFinishedChunkIndex, chunkIndex);
+        });
 
         if (!firstChunkQueued) {
           firstChunkQueued = true;
@@ -1502,7 +1567,7 @@ function _Chat() {
       }
 
       if (
-        completedRequests === chunks.length &&
+        completedRequests === chunks.length - resumeStartIndex &&
         nextChunkToPlay === chunks.length &&
         !hasFailed
       ) {
