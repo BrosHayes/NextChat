@@ -39,7 +39,9 @@ export enum Theme {
 
 const config = getClientConfig();
 export const MODEL_TOKEN_LIMIT_MAX = 2_000_000;
-const DEFAULT_MODEL_TOKEN_LIMIT = 64_000;
+const DEFAULT_CONTEXT_WINDOW_TOKENS = 1_000_000;
+const DEFAULT_MAX_OUTPUT_TOKENS = 32_000;
+const DEFAULT_HISTORY_COMPRESSION_THRESHOLD = 1_000_000;
 
 export const DEFAULT_CONFIG = {
   lastUpdate: Date.now(), // timestamp, to merge state
@@ -71,13 +73,13 @@ export const DEFAULT_CONFIG = {
     providerName: "OpenAI" as ServiceProvider,
     temperature: 0.5,
     top_p: 1,
-    contextWindowTokens: DEFAULT_MODEL_TOKEN_LIMIT,
-    max_tokens: DEFAULT_MODEL_TOKEN_LIMIT,
+    contextWindowTokens: DEFAULT_CONTEXT_WINDOW_TOKENS,
+    max_tokens: DEFAULT_MAX_OUTPUT_TOKENS,
     presence_penalty: 0,
     frequency_penalty: 0,
     sendMemory: true,
     historyMessageCount: 10,
-    compressMessageLengthThreshold: 32000,
+    compressMessageLengthThreshold: DEFAULT_HISTORY_COMPRESSION_THRESHOLD,
     compressModel: "",
     compressProviderName: "",
     enableInjectSystemPrompts: true,

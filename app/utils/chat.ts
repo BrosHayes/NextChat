@@ -144,7 +144,7 @@ export function cacheImageToBase64Image(imageUrl: string) {
         .then((res) => res.blob())
         .then(
           async (blob) =>
-            (imageCaches[imageUrl] = await compressImage(blob, 256 * 1024)),
+            (imageCaches[imageUrl] = await compressImage(blob, 512 * 1024)),
         ); // compressImage
     }
     return Promise.resolve(imageCaches[imageUrl]);

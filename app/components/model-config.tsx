@@ -16,6 +16,11 @@ import { getModelProvider } from "../utils/model";
 
 const INJECT_SYSTEM_PROMPT_SUBTITLE =
   "Inject a global system prompt at the start of every request";
+const TOKEN_INPUT_UNIT = 1000;
+
+function toKTokenValue(value: number) {
+  return Math.max(1, Math.round(value / TOKEN_INPUT_UNIT));
+}
 
 export function ModelConfigList(props: {
   modelConfig: ModelConfig;
@@ -101,43 +106,51 @@ export function ModelConfigList(props: {
         title={Locale.Settings.ContextWindowTokens.Title}
         subTitle={Locale.Settings.ContextWindowTokens.SubTitle}
       >
-        <input
-          aria-label={Locale.Settings.ContextWindowTokens.Title}
-          type="number"
-          min={1024}
-          max={MODEL_TOKEN_LIMIT_MAX}
-          value={getContextWindowTokens(props.modelConfig)}
-          onChange={(e) =>
-            props.updateConfig(
-              (config) =>
-                (config.contextWindowTokens =
-                  ModalConfigValidator.contextWindowTokens(
-                    e.currentTarget.valueAsNumber,
-                  )),
-            )
-          }
-        ></input>
+        <div className={styles["token-input"]}>
+          <input
+            aria-label={Locale.Settings.ContextWindowTokens.Title}
+            type="number"
+            min={1}
+            max={Math.floor(MODEL_TOKEN_LIMIT_MAX / TOKEN_INPUT_UNIT)}
+            step={1}
+            value={toKTokenValue(getContextWindowTokens(props.modelConfig))}
+            onChange={(e) =>
+              props.updateConfig(
+                (config) =>
+                  (config.contextWindowTokens =
+                    ModalConfigValidator.contextWindowTokens(
+                      e.currentTarget.valueAsNumber * TOKEN_INPUT_UNIT,
+                    )),
+              )
+            }
+          ></input>
+          <span>k</span>
+        </div>
       </ListItem>
 
       <ListItem
         title={Locale.Settings.MaxTokens.Title}
         subTitle={Locale.Settings.MaxTokens.SubTitle}
       >
-        <input
-          aria-label={Locale.Settings.MaxTokens.Title}
-          type="number"
-          min={1024}
-          max={MODEL_TOKEN_LIMIT_MAX}
-          value={props.modelConfig.max_tokens}
-          onChange={(e) =>
-            props.updateConfig(
-              (config) =>
-                (config.max_tokens = ModalConfigValidator.max_tokens(
-                  e.currentTarget.valueAsNumber,
-                )),
-            )
-          }
-        ></input>
+        <div className={styles["token-input"]}>
+          <input
+            aria-label={Locale.Settings.MaxTokens.Title}
+            type="number"
+            min={1}
+            max={Math.floor(MODEL_TOKEN_LIMIT_MAX / TOKEN_INPUT_UNIT)}
+            step={1}
+            value={toKTokenValue(props.modelConfig.max_tokens)}
+            onChange={(e) =>
+              props.updateConfig(
+                (config) =>
+                  (config.max_tokens = ModalConfigValidator.max_tokens(
+                    e.currentTarget.valueAsNumber * TOKEN_INPUT_UNIT,
+                  )),
+              )
+            }
+          ></input>
+          <span>k</span>
+        </div>
       </ListItem>
 
       {props.modelConfig?.providerName == ServiceProvider.Google ? null : (
@@ -244,20 +257,24 @@ export function ModelConfigList(props: {
         title={Locale.Settings.CompressThreshold.Title}
         subTitle={Locale.Settings.CompressThreshold.SubTitle}
       >
-        <input
-          aria-label={Locale.Settings.CompressThreshold.Title}
-          type="number"
-          min={500}
-          max={MODEL_TOKEN_LIMIT_MAX}
-          value={props.modelConfig.compressMessageLengthThreshold}
-          onChange={(e) =>
-            props.updateConfig(
-              (config) =>
-                (config.compressMessageLengthThreshold =
-                  e.currentTarget.valueAsNumber),
-            )
-          }
-        ></input>
+        <div className={styles["token-input"]}>
+          <input
+            aria-label={Locale.Settings.CompressThreshold.Title}
+            type="number"
+            min={1}
+            max={Math.floor(MODEL_TOKEN_LIMIT_MAX / TOKEN_INPUT_UNIT)}
+            step={1}
+            value={toKTokenValue(props.modelConfig.compressMessageLengthThreshold)}
+            onChange={(e) =>
+              props.updateConfig(
+                (config) =>
+                  (config.compressMessageLengthThreshold =
+                    e.currentTarget.valueAsNumber * TOKEN_INPUT_UNIT),
+              )
+            }
+          ></input>
+          <span>k</span>
+        </div>
       </ListItem>
       <ListItem title={Locale.Memory.Title} subTitle={Locale.Memory.Send}>
         <input

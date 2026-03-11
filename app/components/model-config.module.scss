@@ -5,3 +5,19 @@
     white-space: normal;
   }
 }
+
+.token-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  input {
+    width: 96px;
+  }
+
+  span {
+    min-width: 12px;
+    text-transform: lowercase;
+    opacity: 0.8;
+  }
+}
