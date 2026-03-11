@@ -249,6 +249,8 @@ function normalizeMask(mask: Partial<Mask> | undefined): Mask {
     ? mask!.context.map(normalizeMessage)
     : fallback.context;
   const createdAt = normalizeTimestamp(mask?.createdAt, fallback.createdAt);
+  const hasOwnModelConfig =
+    isRecord(mask) && isRecord(mask.modelConfig) && Object.keys(mask.modelConfig).length > 0;
 
   return {
     ...fallback,
@@ -256,6 +258,12 @@ function normalizeMask(mask: Partial<Mask> | undefined): Mask {
     context: normalizedContext,
     createdAt,
     updatedAt: normalizeTimestamp(mask?.updatedAt, createdAt),
+    syncGlobalConfig:
+      typeof mask?.syncGlobalConfig === "boolean"
+        ? mask.syncGlobalConfig
+        : hasOwnModelConfig
+        ? false
+        : fallback.syncGlobalConfig,
   };
 }
 

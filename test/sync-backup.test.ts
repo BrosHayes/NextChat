@@ -1,5 +1,6 @@
 import { StoreKey } from "../app/constant";
 import { DEFAULT_ACCESS_STATE, useAccessStore } from "../app/store/access";
+import { useChatStore } from "../app/store/chat";
 import { DEFAULT_CONFIG } from "../app/store/config";
 import { chunkUtf8String } from "../app/utils/cloud/upstash";
 import {
@@ -344,6 +345,57 @@ describe("backup and sync helpers", () => {
 
     expect(useAccessStore.getState().accessCode).toBe("new-secret-code");
     expect(useAccessStore.getState().validatedAccessCode).toBe("");
+  });
+
+  test("setLocalAppState keeps restored session mask config when sync flag is missing", async () => {
+    await setLocalAppState(
+      createPayload({
+        config: {
+          ...DEFAULT_CONFIG,
+          modelConfig: {
+            ...DEFAULT_CONFIG.modelConfig,
+            model: "gpt-4o-mini",
+            contextWindowTokens: 32000,
+          },
+          lastUpdate: 20,
+        },
+        chat: {
+          sessions: [
+            {
+              id: "session-mask-1",
+              topic: "Mask Session",
+              memoryPrompt: "",
+              messages: [],
+              stat: { tokenCount: 0, wordCount: 0, charCount: 0 },
+              lastUpdate: 20,
+              lastSummarizeIndex: 0,
+              mask: {
+                id: "mask-restore-1",
+                createdAt: 1,
+                updatedAt: 1,
+                avatar: "bot",
+                name: "Mask Restore",
+                context: [],
+                modelConfig: {
+                  ...DEFAULT_CONFIG.modelConfig,
+                  model: "gemini-2.5-pro",
+                  contextWindowTokens: 1_000_000,
+                },
+                lang: "en",
+                builtin: false,
+              },
+            },
+          ],
+          deletedSessions: {},
+        },
+      }),
+    );
+
+    const restoredSession = useChatStore.getState().sessions[0];
+
+    expect(restoredSession.mask.syncGlobalConfig).toBe(false);
+    expect(restoredSession.mask.modelConfig.model).toBe("gemini-2.5-pro");
+    expect(restoredSession.mask.modelConfig.contextWindowTokens).toBe(1_000_000);
   });
 
   test("parseBackupContent supports legacy backups and rejects tampering", () => {
