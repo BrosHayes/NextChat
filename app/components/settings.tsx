@@ -1834,7 +1834,6 @@ export function Settings() {
             <Select
               aria-label={titleModelText.title}
               value={titleModelValue}
-              disabled={!config.enableAutoGenerateTitle}
               onChange={(e) =>
                 updateConfig((config) => {
                   if (!e.currentTarget.value) {
