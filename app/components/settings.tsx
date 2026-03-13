@@ -35,6 +35,7 @@ import { ModelConfigList } from "./model-config";
 
 import { IconButton } from "./button";
 import {
+  ModalConfigValidator,
   SubmitKey,
   useChatStore,
   Theme,
@@ -50,6 +51,8 @@ import Locale, {
   getLang,
 } from "../locales";
 import { copyToClipboard, clientUpdate, semverCompare } from "../utils";
+import { useAllModels } from "../utils/hooks";
+import { getModelProvider } from "../utils/model";
 
 const SAAS_START_SUBTITLE =
   "Maintained by NextChat, zero setup needed, unlock the latest AI models";
@@ -670,6 +673,30 @@ export function Settings() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const config = useAppConfig();
   const updateConfig = config.update;
+  const allModels = useAllModels().filter((model) => model.available);
+  const titleModelValue =
+    config.titleModel && config.titleProviderName
+      ? `${config.titleModel}@${config.titleProviderName}`
+      : "";
+  const lang = getLang();
+  const titleModelText =
+    lang === "cn"
+      ? {
+          title: "标题模型",
+          subTitle: "可选，仅用于生成标题的模型",
+          default: "使用默认标题模型",
+        }
+      : lang === "tw"
+      ? {
+          title: "標題模型",
+          subTitle: "可選，僅用於產生標題的模型",
+          default: "使用預設標題模型",
+        }
+      : {
+          title: "Title Model",
+          subTitle: "Optional model used only for title generation",
+          default: "Use default title model",
+        };
 
   const updateStore = useUpdateStore();
   const [checkingUpdate, setCheckingUpdate] = useState(false);
@@ -1798,6 +1825,42 @@ export function Settings() {
                 )
               }
             ></input>
+          </ListItem>
+
+          <ListItem
+            title={titleModelText.title}
+            subTitle={titleModelText.subTitle}
+          >
+            <Select
+              aria-label={titleModelText.title}
+              value={titleModelValue}
+              disabled={!config.enableAutoGenerateTitle}
+              onChange={(e) =>
+                updateConfig((config) => {
+                  if (!e.currentTarget.value) {
+                    config.titleModel = "";
+                    config.titleProviderName = "";
+                    return;
+                  }
+
+                  const [model, providerName] = getModelProvider(
+                    e.currentTarget.value,
+                  );
+                  config.titleModel = ModalConfigValidator.model(model);
+                  config.titleProviderName = providerName as ServiceProvider;
+                })
+              }
+            >
+              <option value="">{titleModelText.default}</option>
+              {allModels.map((model, index) => (
+                <option
+                  value={`${model.name}@${model.provider?.providerName}`}
+                  key={index}
+                >
+                  {model.displayName} ({model.provider?.providerName})
+                </option>
+              ))}
+            </Select>
           </ListItem>
 
           <ListItem

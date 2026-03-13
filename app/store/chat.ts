@@ -15,7 +15,6 @@ import {
   DEFAULT_INPUT_TEMPLATE,
   DEFAULT_MODELS,
   DEFAULT_SYSTEM_TEMPLATE,
-  GEMINI_SUMMARIZE_MODEL,
   DEEPSEEK_SUMMARIZE_MODEL,
   KnowledgeCutOffDate,
   MCP_SYSTEM_TEMPLATE,
@@ -148,7 +147,7 @@ function getSummarizeModel(
     }
   }
   if (currentModel.startsWith("gemini")) {
-    return [GEMINI_SUMMARIZE_MODEL, ServiceProvider.Google];
+    return [currentModel, providerName];
   } else if (currentModel.startsWith("deepseek-")) {
     return [DEEPSEEK_SUMMARIZE_MODEL, ServiceProvider.DeepSeek];
   }
@@ -711,6 +710,14 @@ export const useChatStore = createPersistStore(
               session.mask.modelConfig.providerName,
             );
         const api: ClientApi = getClientApi(providerName as ServiceProvider);
+        const [titleModel, titleProviderName] =
+          config.titleModel && config.titleProviderName
+            ? [config.titleModel, config.titleProviderName]
+            : [model, providerName];
+        const titleApi =
+          titleProviderName === providerName
+            ? api
+            : getClientApi(titleProviderName as ServiceProvider);
 
         // remove error messages if any
         const messages = session.messages;
@@ -738,19 +745,23 @@ export const useChatStore = createPersistStore(
                 content: Locale.Store.Prompt.Topic,
               }),
             );
-          api.llm.chat({
+          titleApi.llm.chat({
             messages: topicMessages,
             config: {
-              model,
+              model: titleModel,
               stream: false,
-              providerName,
+              providerName: titleProviderName,
             },
             onFinish(message, responseRes) {
               if (responseRes?.status !== 200) {
                 if (refreshTitle) {
-                  showToast(Locale.Store.Error);
+                  showToast(message || Locale.Store.Error);
                 }
-                console.error("[Title] refresh failed", responseRes?.status);
+                console.error(
+                  "[Title] refresh failed",
+                  responseRes?.status,
+                  message,
+                );
                 return;
               }
 
@@ -758,9 +769,9 @@ export const useChatStore = createPersistStore(
 
               if (!nextTopic) {
                 if (refreshTitle) {
-                  showToast(Locale.Store.Error);
+                  showToast(message || Locale.Store.Error);
                 }
-                console.error("[Title] refresh returned empty topic");
+                console.error("[Title] refresh returned empty topic", message);
                 return;
               }
 
@@ -771,7 +782,7 @@ export const useChatStore = createPersistStore(
             },
             onError(err) {
               if (refreshTitle) {
-                showToast(Locale.Store.Error);
+                showToast(err.message || Locale.Store.Error);
               }
               console.error("[Title] refresh error", err);
             },

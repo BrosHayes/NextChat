@@ -54,6 +54,8 @@ export const DEFAULT_CONFIG = {
   tightBorder: !!config?.isApp,
   sendPreviewBubble: true,
   enableAutoGenerateTitle: true,
+  titleModel: "" as ModelType | "",
+  titleProviderName: "" as ServiceProvider | "",
   sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
 
   enableArtifacts: true, // show artifacts config
@@ -221,7 +223,7 @@ export const useAppConfig = createPersistStore(
   }),
   {
     name: StoreKey.Config,
-    version: 4.4,
+    version: 4.5,
 
     merge(persistedState, currentState) {
       const state = persistedState as ChatConfig | undefined;
@@ -310,6 +312,11 @@ export const useAppConfig = createPersistStore(
           state.modelConfig.contextWindowTokens ??
           state.modelConfig.max_tokens ??
           DEFAULT_CONFIG.modelConfig.contextWindowTokens;
+      }
+
+      if (version < 4.5) {
+        state.titleModel = DEFAULT_CONFIG.titleModel;
+        state.titleProviderName = DEFAULT_CONFIG.titleProviderName;
       }
 
       return state as any;
