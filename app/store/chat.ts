@@ -730,6 +730,10 @@ export const useChatStore = createPersistStore(
             countMessages(messages) >= SUMMARIZE_MIN_LEN) ||
           refreshTitle
         ) {
+          const topicPrompt =
+            `${Locale.Store.Prompt.Topic}\n` +
+            "Use the primary language of the conversation for the title. " +
+            "Do not translate it into another language.";
           const startIndex = Math.max(
             0,
             messages.length - modelConfig.historyMessageCount,
@@ -742,7 +746,7 @@ export const useChatStore = createPersistStore(
             .concat(
               createMessage({
                 role: "user",
-                content: Locale.Store.Prompt.Topic,
+                content: topicPrompt,
               }),
             );
           titleApi.llm.chat({
