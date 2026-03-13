@@ -1,9 +1,5 @@
-import {
-  getMessageTextContent,
-  isDalle3,
-  safeLocalStorage,
-  trimTopic,
-} from "../utils";
+import { getMessageTextContent, isDalle3, safeLocalStorage } from "../utils";
+import { normalizeGeneratedTopic } from "../utils/topic";
 
 import { indexedDBStorage } from "@/app/utils/indexedDB-storage";
 import { nanoid } from "nanoid";
@@ -750,14 +746,34 @@ export const useChatStore = createPersistStore(
               providerName,
             },
             onFinish(message, responseRes) {
-              if (responseRes?.status === 200) {
-                get().updateTargetSession(
-                  session,
-                  (session) =>
-                    (session.topic =
-                      message.length > 0 ? trimTopic(message) : DEFAULT_TOPIC),
-                );
+              if (responseRes?.status !== 200) {
+                if (refreshTitle) {
+                  showToast(Locale.Store.Error);
+                }
+                console.error("[Title] refresh failed", responseRes?.status);
+                return;
               }
+
+              const nextTopic = normalizeGeneratedTopic(message);
+
+              if (!nextTopic) {
+                if (refreshTitle) {
+                  showToast(Locale.Store.Error);
+                }
+                console.error("[Title] refresh returned empty topic");
+                return;
+              }
+
+              get().updateTargetSession(
+                session,
+                (session) => (session.topic = nextTopic),
+              );
+            },
+            onError(err) {
+              if (refreshTitle) {
+                showToast(Locale.Store.Error);
+              }
+              console.error("[Title] refresh error", err);
             },
           });
         }
